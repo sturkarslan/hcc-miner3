@@ -533,8 +533,10 @@ def kaplan_meier(time, event):
     return np.array(ts), np.array(ss), t, e
 
 
-def survival_report(outdir, surv, cohorts, endpoints=(("OS", "Overall survival"), ("RFS", "Relapse-free survival"))):
-    """surv: DataFrame with cohort, <EP>_time (days), <EP>_event columns."""
+def survival_report(outdir, surv, cohorts, endpoints=(("OS", "Overall survival"), ("RFS", "Relapse-free survival")),
+                    horizon_months=None):
+    """surv: DataFrame with cohort, <EP>_time (days), <EP>_event columns.
+    horizon_months: draw the common analysis horizon as a dashed line."""
     qc = os.path.join(outdir, "qc")
     written = []
     colors = cohort_colors(cohorts)
@@ -559,6 +561,9 @@ def survival_report(outdir, surv, cohorts, endpoints=(("OS", "Overall survival")
             ax.scatter(cens, cs, marker="|", s=30, color=colors[c], lw=1)
             rows.append((c, t))
         ax.set_ylim(0, 1.02)
+        if horizon_months:
+            ax.axvline(horizon_months, color=MUTED, ls="--", lw=1)
+            ax.text(horizon_months, 1.0, f" {horizon_months}-month horizon", color=MUTED, fontsize=7.5, va="top")
         ax.set_xlabel("months from surgery / diagnosis")
         ax.set_ylabel("survival probability")
         ax.set_title(title)

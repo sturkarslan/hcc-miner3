@@ -67,6 +67,11 @@ harmonize:
   protein_coding_only: false
 
 # ---------------------------------------------------------------- step 03 (survival)
+survival:
+  # Common horizon for cross-cohort and validation analyses (CLCA follow-up is reliable to ~36 months;
+  # see PROJECT_LOG). Survival is never pooled across cohorts: one MINER file per cohort and endpoint.
+  horizon_months: 36
+
 clinical:
   CLCA:
     # Nature 2024 Supplementary Table 1 (user-provided), Table 1a = clinical information
@@ -102,3 +107,18 @@ batch:
       CTNNB1: [GLUL, AXIN2, LGR5, TBX3, NKD1, RHBG, SP5]
       proliferation: [MKI67, TOP2A, BIRC5, CCNB1, CDK1, BUB1, AURKA]
       hepatocyte: [ALB, APOA1, CYP3A4, CYP2E1, TTR, SERPINA1]
+
+# ---------------------------------------------------------------- step 04 (MINER3)
+miner:
+  # Which step-02 matrix to use: results/02_batch_corrected/expression_<matrix>_z.csv
+  matrix: combat
+  idmap: /users/sturkars/mambaforge/envs/miner3/lib/python3.11/site-packages/miner/data/identifier_mappings.txt
+  tfs2genes: null            # null = MINER default (tfbsdb_tf_to_genes.pkl)
+  # MINER bulk defaults. The GBM single-cell run used min_correlation 0.1 because of sparsity;
+  # 0.2 is the MINER default for bulk tumor data.
+  min_genes: 6
+  min_correlation: 0.2
+  min_overexp_samples: 4
+  max_exclusion: 0.5
+  overexp_threshold: 80
+  random_state: 12

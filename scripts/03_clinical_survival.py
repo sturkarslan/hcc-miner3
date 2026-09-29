@@ -12,7 +12,9 @@ CLCA 2024: built from Nature 2024 Supplementary Table 1a (41586_2024_7054_MOESM3
 
 Outputs (results/03_genomics_clinical/):
   survival_<cohort>.tsv            patient, OS/RFS time (days) and event, time source, clinical covariates
-  survival_<cohort>_<EP>_miner.csv duration, observed (MINER3 survival format), patients with data only
+  survival_<cohort>_<EP>_miner.csv        duration, observed (MINER3 survival format), indexed by
+                                          expression sample ID, network samples with data only
+  survival_<cohort>_<EP>_h<N>m_miner.csv  same, administratively censored at survival.horizon_months
   qc/s1_kaplan_meier.png
 """
 
@@ -169,6 +171,12 @@ def main():
     if os.path.exists(sp):
         expr_samples = pd.read_csv(sp, sep="\t")
 
+    horizon_months = (P.get("survival") or {}).get("horizon_months")
+    horizon = round(horizon_months * 30.44) if horizon_months else None
+    if horizon:
+        log.info("Common horizon: %s months (%d days); events after it are censored in the _h files",
+                 horizon_months, horizon)
+
     tables = []
     for name, cfg in (P.get("clinical") or {}).items():
         if name not in BUILDERS:
@@ -180,12 +188,28 @@ def main():
             log.warning("%s: input file missing (%s); skipped", name, e)
             continue
         s.to_csv(os.path.join(outdir, f"survival_{name}.tsv"), sep="\t")
+        # MINER3 survival files: one per cohort and endpoint (GuanRank must be computed within a
+        # cohort), indexed by expression sample ID, network samples only. Full length and truncated
+        # at the common horizon (administrative censoring), which is the version for cross-cohort work.
+        es = expr_samples[expr_samples["cohort"] == name] if expr_samples is not None else None
         for ep in ("OS", "RFS"):
             m = s[[f"{ep}_time", f"{ep}_event"]].dropna().astype({f"{ep}_event": int})
             m.columns = ["duration", "observed"]
-            m.to_csv(os.path.join(outdir, f"survival_{name}_{ep}_miner.csv"))
-            log.info("%s %s: %d patients, %d events, median follow-up of censored %.0f days",
-                     name, ep, len(m), m["observed"].sum(), m.loc[m.observed == 0, "duration"].median())
+            if es is not None:
+                m = es.set_index("sample")[["patient"]].join(m, on="patient", how="inner").drop(columns="patient")
+                m.index.name = "sample"
+            versions = {"": m}
+            if horizon:
+                h = m.copy()
+                over = h["duration"] > horizon
+                h.loc[over, "duration"] = horizon
+                h.loc[over, "observed"] = 0
+                versions[f"_h{horizon_months}m"] = h
+            for suffix, mm in versions.items():
+                mm.to_csv(os.path.join(outdir, f"survival_{name}_{ep}{suffix}_miner.csv"))
+                log.info("%s %s%s: %d %s, %d events, median follow-up of censored %.0f days",
+                         name, ep, suffix, len(mm), "network samples" if es is not None else "patients",
+                         mm["observed"].sum(), mm.loc[mm.observed == 0, "duration"].median())
         if expr_samples is not None:
             es = expr_samples[expr_samples["cohort"] == name]
             n = es["patient"].isin(s.index).sum()
@@ -198,7 +222,10 @@ def main():
     if tables:
         import qc_plots
         allsurv = pd.concat(tables)
-        written = qc_plots.survival_report(outdir, allsurv, list(pd.unique(allsurv["cohort"])))
+        written = qc_plots.survival_report(outdir, allsurv, list(pd.unique(allsurv["cohort"])),
+                                           endpoints=(("OS", "Overall survival"),
+                                                      ("RFS", "Relapse-free (CLCA) / progression-free (TCGA) survival")),
+                                           horizon_months=horizon_months)
         log.info("QC figures: %s", ", ".join(written))
 
 

@@ -7,7 +7,7 @@ Keep entries short: date, what, why.
 
 ## Open questions
 
-- **[2026-09-29] Cross-cohort survival comparability (proposal, awaiting user sign-off).** CLCA follow-up ends at ~4 years (assumed cutoff) versus 10 in TCGA, and CLCA survival is better. Checks done:
+- **[2026-09-29] Cross-cohort survival comparability (approved by user; horizon implemented in step 03).** CLCA follow-up ends at ~4 years (assumed cutoff) versus 10 in TCGA, and CLCA survival is better. Checks done:
   - **The cutoff assumption barely matters up to 3 years.** 95% of CLCA operations were in 2018 (range 2017-12 to 2020-06), so every patient has at least ~2 years of real follow-up before any cutoff. Moving the cutoff from 2020-06-30 to 2021-09-30 changes KM OS at 12/24/36 months by ≤ 0.01 (0.94/0.86/0.80–0.81) and RFS by ≤ 0.03 (0.71/0.62–0.63/0.57–0.60).
   - Deaths are recorded steadily through 2021 Q3 (4.3–10.8 per 100 person-years each year), so follow-up was active. Recurrences fall from 29–38 to 7–11 per 100 person-years after year 2, which matches the known early-recurrence peak after resection, not loss of follow-up. The 2020 dip could partly be COVID-related.
   - **CLCA's better survival is not explained by stage.** CLCA BCLC: C 283, B 162, A 36, 0 13 (57% BCLC C; 57% with MVI M1/M2). TCGA AJCC: I 173, II 87, III 85, IV 6. KM at 12/24/36 months: OS CLCA 0.94/0.86/0.81 vs TCGA 0.83/0.71/0.63; RFS/PFS CLCA 0.70/0.63/0.57 vs TCGA 0.64/0.48/0.39. Likely contributors: different populations and care (HBV, antiviral therapy, surgical selection), TCGA OS includes non-cancer and perioperative deaths, and **22% of CLCA patients have unknown status and are dropped** (bias if missingness is informative). Can't separate these with the data we have.
@@ -33,6 +33,11 @@ Keep entries short: date, what, why.
 
 ## Decisions
 
+- **[2026-09-29] Step 04 (MINER3) started on the ComBat matrix (SLURM 14949).** `scripts/04_run_miner.py` (miner3 env) runs `miner3-coexpr` → `miner3-mechinf` → `miner3-subtypes` with `--skip_tpm`; parameters live in `params.yaml` → `miner`. Uses MINER's bulk defaults (`min_genes 6`, `min_correlation 0.2`, `overexp_threshold 80`, `random_state 12`), not the GBM single-cell `-mc 0.1`. Default regulator database `tfbsdb_tf_to_genes.pkl`. MINER keeps 13,120 of the 13,866 genes (those in its `identifier_mappings.txt`, identical to the GBM copy); 409 of the 708 database TFs are among them.
+- **[2026-09-29] All 929 samples go to MINER.** The 4 LICA-FR samples with 10–18% of TPM in shared genes are not outliers after correction (73rd–97th percentile of distance in the top-20-PC space, median correlation within the normal range). The most distant samples come from all three cohorts.
+- **[2026-09-29] Survival handling approved and implemented (step 03).** Survival is never pooled across cohorts. MINER files are written one per cohort and endpoint, **keyed by expression sample ID** (e.g. `TCGA-…-01A`, so they match the MINER matrix), network samples only, in two versions: full length and `_h36m` (administratively censored at 36 months = 1,096 days). Figure `s1_kaplan_meier` marks the horizon.
+  - At 36 months: CLCA OS 181 samples / 32 events, RFS 184 / 80; TCGA OS 360 / 103, PFS 360 / 161.
+  - Steps 06/08 must use the `_h36m` files for cross-cohort work, stratify Cox by cohort, and compute GuanRank per cohort.
 - **[2026-09-29] Step 03 result: survival for TCGA and CLCA.** CLCA reproduces the cloud-session numbers on the server copy of the table (OS 384 patients / 74 deaths; RFS 386 / 169). All 494 IDs match cBioPortal, and all 239 CLCA expression samples match a patient. Survival usable **for expression samples**:
   - CLCA: OS 181/239 (33 deaths), RFS 184/239 (81 recurrences). The rest have unknown status in the table.
   - TCGA: OS 360/366 (128 deaths), PFS 360/366 (175 events).
@@ -109,4 +114,5 @@ Other notes:
 
 ## Issues
 
+- **[2026-09-29] Rule slip:** one inline check wrote a temp gene list to `/dev/shm` and deleted it at once. Temp files go under the project (`tmp/`, gitignored) from now on.
 - **[2026-09-29] Resolved.** `git push` was blocked because GitHub didn't recognize the server's SSH key. User added `~/.ssh/id_ed25519.pub` to GitHub; `main` now pushes to `git@github.com:sturkarslan/hcc-miner3.git`.
