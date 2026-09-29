@@ -8,12 +8,12 @@ Data is not in this repository. It stays on the server under `data/`.
 
 | Step | What | Output |
 |---|---|---|
-| 01 | Harmonize expression: gene IDs to Ensembl, primary HCC tumors only, log2(x+1), gene filtering | `results/01_harmonized/` |
+| 01 | Harmonize expression: TPM for all cohorts (TCGA from GDC STAR), gene IDs to Ensembl, primary HCC tumors only, log2(TPM+1), gene filtering | `results/01_harmonized/` |
 | 02 | Cross-cohort batch correction (ComBat, with per-cohort z-score as comparison) and QC | `results/02_batch_corrected/` |
 | 03 | Build mutation and CNA matrices; harmonize clinical and survival tables | `results/03_genomics_clinical/` |
-| 04 | MINER3: coexpression → mechanistic inference → bicluster members → subtypes | `results/04_miner/` |
+| 04 | MINER3: `coexpr` → `mechinf` → `subtypes` (regulons, programs, states, member matrices) | `results/04_miner/` |
 | 05 | MINER3 causal inference (mutation/CNA → regulator → regulon) | `results/05_causal/` |
-| 06 | Risk modeling and survival (train TCGA OS; test CLCA RFS and external cohorts) | `results/06_risk/` |
+| 06 | MINER3 risk prediction and survival (`miner3-riskpredict` / `miner3-survival`, plus the library's predictor) | `results/06_risk/` |
 | 07 | Post-analysis: states and programs, hallmark and functional enrichment, subtype concordance | `results/07_post/` |
 
 ## Layout

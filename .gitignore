@@ -42,3 +42,4 @@ __pycache__/
 .Rproj.user/
 ._*
 .DS_Store
+external/
