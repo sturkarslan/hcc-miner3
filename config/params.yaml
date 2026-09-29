@@ -191,3 +191,14 @@ genomics:
     segments: data/LICA-FR/cna_data_529.RData
     segments_object: wxs_seg
     cytoband: data/reference/cytoBand_hg38.txt.gz      # LICA-FR segments are hg38 (see PROJECT_LOG)
+
+# ---------------------------------------------------------------- step 05 (causal inference)
+causal:
+  alpha: 0.05              # MINER's nominal threshold for each test (as miner3-causalinference)
+  q_max: 0.1               # high-confidence: BH q (per feature) for the regulon test and the mutation-regulator edge
+  min_cohort_altered: 5    # a cohort is tested when it has >= this many altered and wild-type samples
+  min_cohorts: 2           # high-confidence needs >= this many tested cohorts, all agreeing in direction
+  family_r: 0.9            # regulon families: average-linkage clusters of eigengenes with r >= this
+  min_abs_d: 0.5           # high-confidence: |Cohen's d| of the regulon eigengene, altered vs wild type
+  gene_positions: data/LIHC-TCGA-GDC-Xena/gencode.v36.annotation.gtf.gene.probemap   # hg38, for cis-dosage flag
+  cytoband: data/reference/cytoBand_hg38.txt.gz

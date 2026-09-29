@@ -833,3 +833,44 @@ def genomic_report(outdir, info, cohorts):
     fig.tight_layout()
     _save(fig, qc, "g1_feature_frequency.png", written)
     return written
+
+
+def causal_report(outdir, feat_tab, fam_tab):
+    """c1: per feature, regulon families with MINER-filtered vs high-confidence flows.
+    c2: feature x program heatmap of high-confidence families, signed by regulon direction."""
+    qc = os.path.join(outdir, "qc")
+    written = []
+    ft = feat_tab[feat_tab["filtered_families"] > 0].sort_values(["high_conf_families", "filtered_families"])
+    if len(ft):
+        fig, ax = plt.subplots(figsize=(6.4, 0.6 + 0.19 * len(ft)))
+        y = np.arange(len(ft))
+        ax.barh(y, ft["filtered_families"], color=BACKGROUND, label="MINER-filtered")
+        ax.barh(y, ft["high_conf_families"], color=SLOTS[6], label="high-confidence (FDR + cohort-consistent)")
+        ax.set_yticks(y)
+        ax.set_yticklabels(ft["feature"], fontsize=7)
+        ax.set_xlabel("regulon families with a causal flow from the feature")
+        ax.set_ylim(-0.7, len(ft) - 0.3)
+        ax.grid(axis="y", visible=False)
+        ax.legend(loc="lower right")
+        ax.set_title("Causal flows per genomic feature (families, not regulons)")
+        fig.tight_layout()
+        _save(fig, qc, "c1_causal_by_feature.png", written)
+    hc = fam_tab[fam_tab["level"] == "high_confidence"]
+    if len(hc):
+        hc = hc.assign(sign=np.where(hc["direction"] == "up", 1, -1))
+        m = hc.pivot_table(index="Mutation", columns="program", values="sign", aggfunc="sum", fill_value=0)
+        m = m.loc[m.abs().sum(1).sort_values(ascending=False).index, m.abs().sum(0).sort_values(ascending=False).index]
+        vmax = max(1, np.abs(m.values).max())
+        fig, ax = plt.subplots(figsize=(0.6 + 0.16 * m.shape[1] + 2.4, 0.8 + 0.2 * m.shape[0]))
+        im = ax.imshow(m.values, cmap=DIV, vmin=-vmax, vmax=vmax, aspect="auto", interpolation="none")
+        ax.set_yticks(range(m.shape[0]))
+        ax.set_yticklabels(m.index, fontsize=7)
+        ax.set_xticks(range(m.shape[1]))
+        ax.set_xticklabels([f"P{c}" for c in m.columns], fontsize=6, rotation=90)
+        ax.grid(False)
+        ax.set_xlabel("transcriptional program")
+        ax.set_title("High-confidence causal families: up (red) / down (blue) in altered tumors")
+        fig.colorbar(im, ax=ax, fraction=0.03, pad=0.02, label="families (signed)")
+        fig.tight_layout()
+        _save(fig, qc, "c2_feature_program_heatmap.png", written)
+    return written
