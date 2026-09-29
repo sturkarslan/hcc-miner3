@@ -1,0 +1,76 @@
+# Pipeline parameters. Paths are relative to the project root
+# (/proj/omics4tb2/sturkarslan/HCC on the server).
+#
+# Items marked VERIFY are column names or file names that have not been checked
+# against the real files yet. Scripts fail with the list of available columns
+# when a configured column is missing.
+
+paths:
+  data: data
+  results: results
+
+# ---------------------------------------------------------------- step 01
+cohorts:
+  TCGA:
+    # UCSC Xena GDC hub; values are log2(TPM + 0.001), versioned Ensembl IDs (GENCODE v36)
+    expression: data/LIHC-TCGA-GDC-Xena/TCGA-LIHC.star_tpm.tsv.gz
+    format: xena_log2tpm
+    pseudocount: 0.001
+    id_type: ensembl
+    # Primary tumors only: TCGA sample-type code 01, vial A
+    sample_regex: '^TCGA-..-....-01A'
+    # Samples to drop (fibrolamellar carcinomas etc.): one sample or patient ID per line
+    exclude_list: config/tcga_exclude.tsv
+  CLCA:
+    # cBioPortal format: Hugo_Symbol [, Entrez_Gene_Id], samples...
+    expression: data/CLCA-2024/data_mrna_seq_tpm.txt   # VERIFY folder name
+    format: cbioportal_tpm
+    id_type: symbol
+  LICA_FR:
+    expression: data/LICA-FR/RNAseq_tpm_457s.RData     # VERIFY folder name
+    format: rdata_tpm
+    rdata_object: tpm_
+    id_type: symbol
+    annotation: data/LICA-FR/clinical_molecular_annotations.xlsx
+    annotation_id_column: sample_id        # VERIFY; values like '#1010T', mapped '#' -> 'CHC'
+    annotation_id_prefix_map: {'#': 'CHC'}
+    # Keep rows where this column is in `keep_values` (drops NTL, relapse, metastasis, HCC-on-HCA)
+    sample_type_column: tissue_type        # VERIFY
+    keep_values: [HCC]                     # VERIFY
+    # Labels carried into the sample table and used for QC in step 02
+    label_columns:                         # VERIFY
+      boyault: Boyault_class
+      molecular_group: molecular_group
+      immune_class: immune_class
+      etiology: etiology
+
+id_mapping:
+  # MINER3 identifier_mappings.txt (Preferred_Name = Ensembl, Name = identifier, Source)
+  miner_idmap: external/miner3_mattwall/miner/data/identifier_mappings.txt   # VERIFY path
+  # Optional HGNC complete set (https://www.genenames.org/download/); null to skip
+  hgnc: data/reference/hgnc_complete_set.txt
+  # Symbols that map to more than one Ensembl ID are dropped and logged
+
+harmonize:
+  # Rescale each sample to sum to 1e6 over the genes shared by all cohorts
+  renormalize_tpm: true
+  # A gene is kept if TPM >= min_tpm in >= min_frac of samples in EVERY cohort,
+  # so cohort-specific detection does not drive the batch effect
+  min_tpm: 1.0
+  min_frac: 0.2
+  # Protein-coding only (needs HGNC locus_group); false keeps all mapped genes
+  protein_coding_only: false
+
+# ---------------------------------------------------------------- step 02
+batch:
+  methods: [combat, cohort_z]      # combat is the primary; cohort_z is the comparison
+  combat_parametric: true
+  # MINER's preProcessTPM clips z-scores below -4; apply the same to the final matrix
+  z_clip_low: -4.0
+  qc:
+    n_pcs: 20
+    # Symbols of marker programs checked for preservation after correction
+    programs:
+      CTNNB1: [GLUL, AXIN2, LGR5, TBX3, NKD1, RHBG, SP5]
+      proliferation: [MKI67, TOP2A, BIRC5, CCNB1, CDK1, BUB1, AURKA]
+      hepatocyte: [ALB, APOA1, CYP3A4, CYP2E1, TTR, SERPINA1]

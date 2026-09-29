@@ -30,6 +30,26 @@ envs/       project-local conda envs  (not versioned)
 ## Environment
 
 MINER3 runs from the `miner3` conda env (`/users/sturkars/mambaforge/envs/miner3`).
+Steps 01–02 run from a project-local env with ComBat (`inmoose`):
+
+```
+mamba env create -p envs/hcc-prep -f config/environment_prep.yml
+```
+
+## Running
+
+All parameters are in `config/params.yaml`. Entries marked `VERIFY` are column or file names that have not
+been checked against the real files yet; scripts stop and list the available columns when one is wrong.
+
+```
+mkdir -p logs
+sbatch scripts/slurm/01_harmonize_expression.sbatch
+sbatch scripts/slurm/02_batch_correct.sbatch
+```
+
+Step 02 writes `results/02_batch_corrected/expression_combat_z.csv` (and `expression_cohort_z_z.csv` for
+comparison), genes × samples with Ensembl IDs, already z-scored for `miner3-coexpr --skip_tpm`.
+Check `qc_metrics.tsv`, `qc_programs.tsv` and `qc_pca.png` before step 04.
 
 ## Project log
 

@@ -7,6 +7,12 @@ Keep entries short: date, what, why.
 
 ## Open questions
 
+- **[2026-09-29] Steps 01–02 written, not yet run on real data.** `scripts/01_harmonize_expression.py`, `scripts/02_batch_correct.py`, `config/params.yaml`. Tested end to end only on synthetic data (cloud session; no server access). Before the first run:
+  - Check the `VERIFY` entries in `config/params.yaml`: CLCA and LICA-FR folder names, and the LICA-FR annotation columns (ID, sample type and its HCC value, Boyault/molecular/immune/etiology labels).
+  - Fill `config/tcga_exclude.tsv` with the 3 fibrolamellar TCGA cases.
+  - Download the HGNC complete set to `data/reference/hgnc_complete_set.txt`. Without it, symbols map through MINER's `identifier_mappings.txt` only.
+  - If pyreadr loses the row names of `tpm_`, the script stops. Export the matrix to TSV from R and set `format: tsv_tpm`; the error message gives the command.
+  - Create `envs/hcc-prep` from `config/environment_prep.yml`.
 - **[2026-09-29] LICA-FR survival data.** Still not found.
   - `clinical_molecular_annotations.xlsx` has no OS/RFS columns.
   - Jia & Tang 2021 (J Clin Transl Hepatol, PMC9039713) Table S2 (`JCTH-10-273-s002.csv`, provided by user) pools ICGC LIRI-JP (232), LICA-FR (161) and LIHC-US/TCGA (294) by ICGC donor ID (`DO…`). Grouping by ID block and censoring pattern, the block `DO228883…, DO231795–DO231932, DO44634–DO44868, DO50743–DO50748, DO50810–DO50974` looks like LICA-FR. Only 6 of those donors have vital status + time. **Inference, not confirmed**: no ICGC donor-ID → CHC-ID mapping is available (ICGC DCC portal retired).
@@ -19,6 +25,9 @@ Keep entries short: date, what, why.
 
 ## Decisions
 
+- **[2026-09-29] Step 01 harmonization rules.** Symbol → Ensembl tiers, first hit wins: HGNC approved → MINER Gene Name → HGNC previous → aliases (MINER Synonym + HGNC alias). A symbol matching more than one Ensembl ID in its tier is dropped and logged in `id_mapping_<cohort>.tsv`. Rows mapping to the same Ensembl ID are summed, since TPM is additive. Only genes shared by all cohorts are kept, and TPM is renormalized to 1e6 over them. A gene is kept if TPM ≥ 1 in ≥ 20% of samples in **every** cohort, so cohort-specific detection can't drive the batch effect. Output is log2(TPM+1). For TCGA, only `-01A` samples, one per patient.
+- **[2026-09-29] Step 02: ComBat primary, per-cohort z as comparison.** ComBat (inmoose, parametric, cohort as batch, no covariates, because the LICA-FR labels exist in only one cohort). Genes with zero variance in any cohort are dropped. The final matrix is the gene z-score across all samples, clipped below −4 as in MINER's `preProcessTPM`. QC per matrix: silhouette and kNN mixing by cohort on the top 20 PCs, within-cohort structure preservation (Spearman of gene-centered sample-sample correlations), LICA-FR label silhouettes, and marker-program scores (CTNNB1, proliferation, hepatocyte) with per-cohort mean/SD and Kruskal–Wallis H by label.
+  - **Caveat, seen in the synthetic test.** Correction removes real differences in subtype composition between cohorts, along with the batch effect. For example, a CTNNB1 program enriched in LICA-FR is pulled to the cross-cohort mean. The within-LICA-FR Boyault association is preserved. The same applies to etiology (CLCA ≈ HBV). Keep this in mind when comparing state frequencies across cohorts.
 - **[2026-09-29] Use GDC STAR TPM for TCGA, not the cBioPortal file.** The cBioPortal `data_mrna_seq_v2_rsem.txt` is RSEM upper-quartile-normalized counts, not TPM (column sums ≈ 2.8×10⁷). Downloaded `TCGA-LIHC.star_tpm.tsv.gz` from UCSC Xena GDC hub into `data/LIHC-TCGA-GDC-Xena/`. **Values are log2(TPM + 0.001)**; back-transform before combining with CLCA/LICA-FR TPM. Ensembl IDs are versioned (GENCODE v36). 371 primary tumors (`-01A`), 3 recurrent (`-02`), 50 normals (`-11`).
 - **[2026-09-29] Risk modeling uses MINER3's own framework**, not a custom plan (user direction). Details under Environment/tooling.
 - **[2026-09-29] Follow the working GBM MINER3 run** in `/proj/omics4tb2/sturkarslan/GBM-15370004/analysis_stringent_sct/`: `miner3-coexpr -mg 6` → `miner3-mechinf -mc 0.1` → `miner3-subtypes`, all with `--skip_tpm` on pre-z-scored input. `miner3-subtypes` writes `coherentMembers.csv`, `overExpressedMembers.csv`, `transcriptional_programs.json`, `transcriptional_states.json`, so no separate bcmembers step is needed.
