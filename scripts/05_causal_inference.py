@@ -27,8 +27,9 @@ Outputs (results/05_causal/<matrix>/):
   causal_results/pooled/*.csv   MINER per-feature output
   completeCausalResults.csv     all MINER flows, annotated (symbols, q-values, cohort stats, family, program)
   filteredCausalResults.csv     MINER's CLI filter (same four criteria as miner3-causalinference)
-  highConfidenceCausalResults.csv  filtered + q <= causal.q_max for both tests + cohort-consistent
-  causal_by_family.tsv          one row per feature x regulon family (best flow, regulators, consistency)
+  highConfidenceCausalResults.csv  filtered + q <= causal.q_max for both tests + cohort-consistent + |d| >= min_abs_d
+                                   + feature altered in >= min_altered_hc samples; sorted by |d|
+  causal_by_family.tsv          one row per feature x regulon family (best flow = largest |d|, ranked by |d|)
   causal_by_feature.tsv         per feature: flows, regulators, families, programs at each level
   regulon_families.tsv          regulon -> family, program, regulator symbol
   wiring_diagram.csv            MINER wiringDiagram on the filtered results (if it runs)
@@ -300,6 +301,7 @@ def main():
     feat_type = pd.read_csv(os.path.join(res, "03_genomics_clinical", "genomic_features_info.tsv"),
                             sep="\t", index_col=0)["type"]
     cr["feature_type"] = cr["Mutation"].map(feat_type)
+    cr["n_altered"] = cr["Mutation"].map((F == 1).sum(axis=1))
     # gene-dosage flag for arm features: >= 50% of the regulon's genes lie on the altered arm
     garm = gene_arms(p(C["gene_positions"]), p(C["cytoband"]), back)
     is_arm = cr["feature_type"] == "arm_cna"
@@ -318,16 +320,20 @@ def main():
               & (cr["-log10(p)_MutationRegulatorEdge"] >= -np.log10(a))]
     filt.to_csv(os.path.join(outdir, "filteredCausalResults.csv"))
     hc = filt[(filt["q_regulon"] <= C["q_max"]) & (filt["q_edge"] <= C["q_max"]) & filt["cohort_consistent"]
-              & (filt["cohen_d"].abs() >= C["min_abs_d"])]
+              & (filt["cohen_d"].abs() >= C["min_abs_d"]) & (filt["n_altered"] >= C["min_altered_hc"])]
+    # rank by effect size: strongest shift of the regulon first
+    hc = hc.assign(abs_d=hc["cohen_d"].abs()).sort_values("abs_d", ascending=False).drop(columns="abs_d")
     hc.to_csv(os.path.join(outdir, "highConfidenceCausalResults.csv"))
+    log.info("Features below min_altered_hc (%d altered), excluded from high-confidence: %s", C["min_altered_hc"],
+             sorted(set(filt.loc[filt["n_altered"] < C["min_altered_hc"], "Mutation"])))
     log.info("Flows: MINER %d, MINER-filtered %d, high-confidence %d (q <= %.2f both tests, consistent in all "
-             "tested cohorts, >= %d cohorts, |d| >= %.2f); of these, adjusted q <= %.2f: %d; cis-dosage: %d",
-             len(cr), len(filt), len(hc), C["q_max"], C["min_cohorts"], C["min_abs_d"], C["q_max"],
+             "tested cohorts, >= %d cohorts, |d| >= %.2f, >= %d altered); of these, adjusted q <= %.2f: %d; cis-dosage: %d",
+             len(cr), len(filt), len(hc), C["q_max"], C["min_cohorts"], C["min_abs_d"], C["min_altered_hc"], C["q_max"],
              int((hc["q_regulon_adjusted"] <= C["q_max"]).sum()), int(hc["cis_dosage"].sum()))
 
     # ---- summaries
     def by_family(df, level):
-        g = df.sort_values("-log10(p)_Regulon_stratification", ascending=False).groupby(["Mutation", "family"])
+        g = df.assign(abs_d=df["cohen_d"].abs()).sort_values("abs_d", ascending=False).groupby(["Mutation", "family"])
         out = g.agg(program=("program", "first"), n_flows=("Regulon", "size"), n_regulons=("Regulon", "nunique"),
                     regulators=("regulator_symbol", lambda s: ",".join(pd.unique(s)[:10])),
                     n_regulators=("Regulator", "nunique"),
@@ -340,7 +346,10 @@ def main():
                     frac_cohort_consistent=("cohort_consistent", "mean"),
                     frac_cis_dosage=("cis_dosage", "mean"))
         out["level"] = level
-        return out.reset_index()
+        out = out.reset_index()
+        out["rank_in_feature"] = out.groupby("Mutation")["best_cohen_d"].transform(
+            lambda v: v.abs().rank(ascending=False, method="min")).astype(int)
+        return out.sort_values(["Mutation", "rank_in_feature"])
 
     fam_tab = pd.concat([by_family(filt, "miner_filtered"), by_family(hc, "high_confidence")] if len(hc)
                         else [by_family(filt, "miner_filtered")])

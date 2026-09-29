@@ -200,5 +200,6 @@ causal:
   min_cohorts: 2           # high-confidence needs >= this many tested cohorts, all agreeing in direction
   family_r: 0.9            # regulon families: average-linkage clusters of eigengenes with r >= this
   min_abs_d: 0.5           # high-confidence: |Cohen's d| of the regulon eigengene, altered vs wild type
+  min_altered_hc: 30       # high-confidence: feature altered in >= this many profiled samples (small-group d is unstable)
   gene_positions: data/LIHC-TCGA-GDC-Xena/gencode.v36.annotation.gtf.gene.probemap   # hg38, for cis-dosage flag
   cytoband: data/reference/cytoBand_hg38.txt.gz
