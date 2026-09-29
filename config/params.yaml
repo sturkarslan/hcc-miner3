@@ -127,3 +127,15 @@ miner:
   # Module IDs are from THIS run (random_state 12); re-check them if MINER is rerun.
   exclude_modules: [1, 2, 4, 6]
   exclude_min_fraction: 0.5
+
+# ---------------------------------------------------------------- step 07 (post-analysis)
+post:
+  signatures_config: config/subtype_signatures.yaml
+  # Which MINER subtypes run to map: results/04_miner/<matrix>/<subtypes_dir>/
+  subtypes_dir: subtypes_filtered
+  min_set_genes: 5             # signatures with fewer genes in the background are skipped
+  ntp:                         # Nearest Template Prediction (Hoshida 2010)
+    permutations: 1000
+    fdr: 0.05
+    seed: 1
+    center: all                # all = the step-02 z-score across samples; cohort = re-centre within cohort

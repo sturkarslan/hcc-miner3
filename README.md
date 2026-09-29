@@ -47,7 +47,14 @@ mkdir -p logs
 sbatch scripts/slurm/01_harmonize_expression.sbatch
 sbatch scripts/slurm/02_batch_correct.sbatch
 sbatch scripts/slurm/03_clinical_survival.sbatch
+# after MINER (step 04):
+sbatch scripts/slurm/07a_subtype_signatures.sbatch   # downloads MSigDB GMTs, builds the signature library
+sbatch scripts/slurm/07b_subtype_mapping.sbatch      # NTP subtype calls, state/program mapping
 ```
+
+Subtype signatures are configured in `config/subtype_signatures.yaml` (MSigDB set-name patterns and NTP
+classifiers) and `config/subtype_signatures_custom.tsv` (signatures not in MSigDB, filled from the papers'
+supplementary tables).
 
 Step 02 writes `results/02_batch_corrected/expression_combat_z.csv` (and `expression_cohort_z_z.csv` for
 comparison), genes × samples with Ensembl IDs, already z-scored for `miner3-coexpr --skip_tpm`.
@@ -76,6 +83,10 @@ Each step writes PNGs to `results/<step>/qc/`:
 | `m1_module_size_coherence` | coexpression module size vs PC1 variance share (step 04b) | big modules with low PC1 share (merged signals) |
 | `m2_largest_modules_annotation` | largest modules: eigengene r with marker programs; cohort/label η²; technical \|r\| | cohort or technical association |
 | `m3_module_<id>` | heatmap, eigengene by cohort, gene–eigengene r, module scree | one dominant PC vs several |
+| `p1_states_vs_subtypes` | MINER states vs NTP subtype calls, LICA-FR labels and cohort (step 07b) | one dominant subtype per state; cohort ARI ≈ 0 |
+| `p2_program_signature_overlap` | program genes vs signature genes (hypergeometric FDR) | which published signature each program recovers |
+| `p3_program_signature_correlation` | program activity vs signature score across samples | same, at sample level (works when gene overlap is low) |
+| `p4_ntp_vs_labels` | NTP calls vs LICA-FR author labels | classifier sanity check before trusting calls on TCGA/CLCA |
 | `s1_kaplan_meier` | OS and RFS by cohort with numbers at risk | plausible event rates and follow-up |
 
 ## Project log

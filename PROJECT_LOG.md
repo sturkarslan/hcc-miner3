@@ -33,6 +33,17 @@ Keep entries short: date, what, why.
 
 ## Decisions
 
+- **[2026-09-29] Step 07a/07b: map MINER states and programs to published HCC subtypes (written in the cloud session, tested on synthetic data only).**
+  - `07a_subtype_signatures.py` builds the signature library from MSigDB (C2 CGP + hallmark, v2024.1.Hs, downloaded on the server) and `config/subtype_signatures_custom.tsv`. Gene lists are never typed from memory. Sets are selected by name pattern (`config/subtype_signatures.yaml`), and every pattern that matches nothing is logged. **VERIFY on the first run:** the MSigDB set names (Hoshida S1–S3, Boyault G1–G6 UP/DN, Chiang classes) and the download URL were written without MSigDB access. Symbols map via genes.tsv → HGNC approved → HGNC previous/alias (old array signatures use retired symbols); ambiguous aliases are dropped.
+  - `07b_subtype_mapping.py`:
+    - NTP (Hoshida 2010) per classifier: cosine similarity to signed templates, 1,000 gene-label permutations, BH over samples, FDR ≥ 0.05 → unassigned. Checked against the LICA-FR labels (`ntp_vs_labels.tsv`, figure p4) before the calls are trusted on TCGA/CLCA.
+    - States vs every annotation: one-sided Fisher per state × level, BH, ARI. Cohort is included as a negative control.
+    - Programs and regulons vs every signature: hypergeometric, background = genes in MINER coexpression modules.
+    - Program activity (mean regulon eigengene) vs signature score, Pearson r.
+    - MINER IDs mapped back with `miner_id_backmap`. Default input `subtypes_filtered` (`post.subtypes_dir`).
+  - Synthetic test (3 planted classes, 15% label noise): NTP recovered the classes, states vs NTP ARI 0.71, cohort ARI 0.00, the noise program had no FDR < 0.05 hit.
+  - **Custom signatures still to add** (`subtype_signatures_custom.tsv`, from supplementary tables): Montironi 2023 immune classes, Sia 2017 immune class, Désert 2017 zonation subtypes, Haber 2023 IFN signature, Zhu 2022 atezo-bev signatures, Pinyol 2021 NASH-HCC, TCGA iClusters, Gao 2019.
+  - Caveat: ComBat removes cohort differences in subtype composition (see step 02), so NTP on the z-matrix calls subtypes relative to the pooled mean. `post.ntp.center: cohort` gives the within-cohort alternative; compare both when interpreting cohort-specific frequencies.
 - **[2026-09-29] Step 04b on the coexpr output (server): module 0 is fine; modules 1, 2, 4, 6 look like a technical RNA-quality axis.** No module tracks cohort (all η² = 0.00), and all of the largest are coherent (PC1 46–60%, PC2 ≤ 10%, ≤ 1% loose genes). So the coherence rule alone says "keep". Additional checks with `n_genes_detected` (per-sample genes at TPM ≥ 1), controlling for hepatocyte and proliferation programs within each cohort, and gene genomic span (GENCODE v36):
   - **Module 0 (909 genes): microenvironment, biological.** Stromal/myeloid/T/B programs r 0.71–0.80; anti-correlated with CLCA tumor purity (r −0.49); normal gene span (32 kb vs 31 kb for all genes); linked to immune class (η² 0.39). It merges immune and stromal content into one purity axis, which is expected in bulk tumors.
   - **Module 3 (270): proliferation, biological** (r 0.95 with the marker program; Boyault η² 0.47).

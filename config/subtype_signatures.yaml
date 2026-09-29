@@ -1,0 +1,55 @@
+# Liver-cancer subtype signatures for mapping MINER states and programs (steps 07a/07b).
+#
+# Gene lists are never typed in here. They come from MSigDB GMT files (downloaded on the server)
+# or from config/subtype_signatures_custom.tsv (filled from the papers' supplementary tables).
+# Set names below are regular expressions, matched against the GMT set names. Step 07a logs every
+# pattern that matches nothing, so a wrong or renamed MSigDB set shows up instead of silently
+# giving an empty signature. VERIFY: MSigDB set names were written from memory in a session
+# without MSigDB access; check the 07a log on the first run.
+
+msigdb:
+  # Downloaded if missing (the server has internet access). Symbols version.
+  release: 2024.1.Hs
+  base_url: https://data.broadinstitute.org/gsea-msigdb/msigdb/release/2024.1.Hs   # VERIFY
+  files:
+    c2_cgp: data/reference/msigdb/c2.cgp.v2024.1.Hs.symbols.gmt
+    hallmark: data/reference/msigdb/h.all.v2024.1.Hs.symbols.gmt
+
+# Gene-set library for program/regulon annotation: every set whose name matches one of these,
+# plus all hallmark sets.
+library_patterns:
+  - "LIVER_CANCER"
+  - "HEPATOCELLULAR"
+  - "HEPATOBLAST"
+  - "^COULOUARN_TEMPORAL_TGFB1"
+  - "^KAPOSI_LIVER_CANCER_MET"
+include_hallmark: true
+
+# Sample classifiers run by Nearest Template Prediction (Hoshida 2010, PLoS One 5:e15543).
+# Each class: `up` (and optional `dn`) set-name patterns. Template = +1 for up genes, -1 for dn genes.
+# Classes whose patterns match nothing are dropped (logged); a classifier needs >= 2 classes.
+classifiers:
+  hoshida:                      # Hoshida et al., Cancer Res 2009;69:7385
+    S1: {up: ["^HOSHIDA_LIVER_CANCER_SUBCLASS_S1$"]}
+    S2: {up: ["^HOSHIDA_LIVER_CANCER_SUBCLASS_S2$"]}
+    S3: {up: ["^HOSHIDA_LIVER_CANCER_SUBCLASS_S3$"]}
+  boyault:                      # Boyault et al., Hepatology 2007;45:42
+    G1: {up: ["^BOYAULT_LIVER_CANCER_SUBCLASS_G1_UP$"], dn: ["^BOYAULT_LIVER_CANCER_SUBCLASS_G1_DN$"]}
+    G2: {up: ["^BOYAULT_LIVER_CANCER_SUBCLASS_G2_UP$"], dn: ["^BOYAULT_LIVER_CANCER_SUBCLASS_G2_DN$"]}
+    G3: {up: ["^BOYAULT_LIVER_CANCER_SUBCLASS_G3_UP$"], dn: ["^BOYAULT_LIVER_CANCER_SUBCLASS_G3_DN$"]}
+    G4: {up: ["^BOYAULT_LIVER_CANCER_SUBCLASS_G4_UP$"], dn: ["^BOYAULT_LIVER_CANCER_SUBCLASS_G4_DN$"]}
+    G5: {up: ["^BOYAULT_LIVER_CANCER_SUBCLASS_G5_UP$"], dn: ["^BOYAULT_LIVER_CANCER_SUBCLASS_G5_DN$"]}
+    G6: {up: ["^BOYAULT_LIVER_CANCER_SUBCLASS_G6_UP$"], dn: ["^BOYAULT_LIVER_CANCER_SUBCLASS_G6_DN$"]}
+  chiang:                       # Chiang et al., Cancer Res 2008;68:6779
+    CTNNB1: {up: ["^CHIANG_LIVER_CANCER_SUBCLASS_CTNNB1_UP$"], dn: ["^CHIANG_LIVER_CANCER_SUBCLASS_CTNNB1_DN$"]}
+    proliferation: {up: ["^CHIANG_LIVER_CANCER_SUBCLASS_PROLIFERATION_UP$"], dn: ["^CHIANG_LIVER_CANCER_SUBCLASS_PROLIFERATION_DN$"]}
+    interferon: {up: ["^CHIANG_LIVER_CANCER_SUBCLASS_INTERFERON_UP$"], dn: ["^CHIANG_LIVER_CANCER_SUBCLASS_INTERFERON_DN$"]}
+    polysomy7: {up: ["^CHIANG_LIVER_CANCER_SUBCLASS_POLYSOMY7_UP$"], dn: ["^CHIANG_LIVER_CANCER_SUBCLASS_POLYSOMY7_DN$"]}
+    unannotated: {up: ["^CHIANG_LIVER_CANCER_SUBCLASS_UNANNOTATED_UP$"], dn: ["^CHIANG_LIVER_CANCER_SUBCLASS_UNANNOTATED_DN$"]}
+  # Classifiers built from config/subtype_signatures_custom.tsv use `custom:<set name>` patterns, e.g.
+  # montironi:                  # Montironi et al., Gut 2023;72:129
+  #   inflamed: {up: ["^custom:MONTIRONI_INFLAMED$"]}
+  #   excluded: {up: ["^custom:MONTIRONI_EXCLUDED$"]}
+
+# Custom signatures (not in MSigDB), long format: set, reference, direction (up/dn), gene_symbol.
+custom_file: config/subtype_signatures_custom.tsv

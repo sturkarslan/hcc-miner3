@@ -1,0 +1,11 @@
+# Custom liver-cancer signatures not in MSigDB. One row per gene; lines starting with # are ignored.
+# Fill from the papers' supplementary tables (never from memory). Set names are referenced in
+# config/subtype_signatures.yaml as "custom:<set>". To add (priority order):
+#   Montironi et al., Gut 2023 (inflamed / intermediate / excluded immune classes)
+#   Sia et al., Gastroenterology 2017 (immune class; active vs exhausted)
+#   Desert et al., Hepatology 2017 (STEM / ECM / PERIPORTAL / PERIVENOUS)
+#   Haber et al., Gastroenterology 2023 (11-gene IFN signature, anti-PD-1 response)
+#   Zhu et al., Nat Med 2022 (atezolizumab-bevacizumab: Teff, VEGFR2, Treg, myeloid)
+#   Pinyol et al., J Hepatol 2021 (NASH-HCC)
+#   TCGA Cell 2017 iCluster markers; Gao et al., Cell 2019 (S-I/S-II/S-III, mRNA markers)
+set	reference	direction	gene_symbol

@@ -701,3 +701,110 @@ def module_report(outdir, tab, E, zc, modules, samples, top, prog):
         b3.grid(axis="x", visible=False)
         _save(fig, qc, f"m3_module_{k}.png", written)
     return written
+
+
+# ================================================================== step 07b
+
+def _short_set(name, n=42):
+    s = (name.replace("HALLMARK_", "H: ").replace("_LIVER_CANCER", "").replace("SUBCLASS_", "")
+         .replace("custom:", ""))
+    return s if len(s) <= n else s[:n - 1] + "…"
+
+
+def _heat(ax, M, cmap, vmin, vmax, fmt=None, marks=None):
+    im = ax.imshow(M, cmap=cmap, vmin=vmin, vmax=vmax, aspect="auto", interpolation="nearest")
+    ax.grid(False)
+    if fmt is not None or marks is not None:
+        for (i, j), v in np.ndenumerate(M):
+            txt = (fmt.format(v) if fmt and not np.isnan(v) else "") + (marks[i, j] if marks is not None else "")
+            if txt:
+                ax.text(j, i, txt, ha="center", va="center", fontsize=6.5,
+                        color=SURFACE if (not np.isnan(v) and (v - vmin) / (vmax - vmin + 1e-12) > 0.6) else INK2)
+    return im
+
+
+def subtype_report(outdir, enr, ari, pt, cor, calls, samples, label_cols, states):
+    qc = os.path.join(outdir, "qc")
+    written = []
+    st_order = sorted(states, key=int)
+    ari_map = ari.set_index("annotation")["ari"]
+
+    # ---- p1: states vs each annotation
+    anns = [a for a in enr["annotation"].unique()]
+    ncol = min(3, len(anns))
+    nrow = int(np.ceil(len(anns) / ncol))
+    fig, axes = plt.subplots(nrow, ncol, figsize=(4.6 * ncol, 0.28 * len(st_order) * nrow + 1.6 * nrow),
+                             squeeze=False, layout="constrained")
+    for ax, a in zip(axes.flat, anns):
+        t = enr[enr["annotation"] == a]
+        F = t.pivot(index="state", columns="level", values="frac_of_state").reindex(st_order)
+        sig = t.assign(m=np.where((t.fdr < 0.05) & (t.odds_ratio > 1), "*", "")) \
+            .pivot(index="state", columns="level", values="m").reindex(index=st_order, columns=F.columns).fillna("")
+        im = _heat(ax, F.values.astype(float), SEQ, 0, 1, marks=sig.values)
+        ax.set_xticks(range(F.shape[1]), [str(c) for c in F.columns], rotation=40, ha="right", fontsize=7)
+        ax.set_yticks(range(len(st_order)), [f"state {s} (n={len(states[s])})" for s in st_order], fontsize=7)
+        ax.set_title(f"{a}  (ARI {ari_map.get(a, np.nan):.2f})", fontsize=9)
+    for ax in list(axes.flat)[len(anns):]:
+        ax.set_visible(False)
+    fig.colorbar(im, ax=axes.ravel().tolist(), shrink=0.5, label="fraction of state's samples  (* enriched, FDR < 0.05)")
+    fig.suptitle("MINER states vs published subtypes (NTP calls), LICA-FR labels and cohort", x=0.01, ha="left",
+                 fontweight="bold", color=INK, fontsize=10)
+    _save(fig, qc, "p1_states_vs_subtypes.png", written)
+
+    # ---- p2 / p3: programs vs signatures
+    progs = sorted(cor.index, key=lambda v: int(v))
+    sig_sets = pt[pt["fdr"] < 0.05]
+    cols = list(sig_sets.groupby("signature")["fdr"].min().sort_values().index[:35])
+    if not cols:
+        cols = list(cor.abs().max().sort_values(ascending=False).index[:35])
+    if len(pt):
+        L = pt.pivot_table(index="program", columns="signature", values="fdr", aggfunc="min") \
+            .reindex(index=[str(x) for x in progs], columns=cols)
+        L.index = L.index.astype(str)
+        V = -np.log10(L.values.astype(float))
+        V = np.where(np.isnan(V), 0, np.minimum(V, 10))
+        O = pt.pivot_table(index="program", columns="signature", values="overlap", aggfunc="max") \
+            .reindex(index=[str(x) for x in progs], columns=cols)
+        marks = np.where(L.values < 0.05, O.values.astype(float), np.nan)
+        marks = np.vectorize(lambda v: "" if np.isnan(v) else str(int(v)))(marks)
+        fig, ax = plt.subplots(figsize=(2.5 + 0.32 * len(cols), max(3.6, 1.4 + 0.3 * len(progs))), layout="constrained")
+        im = _heat(ax, V, SEQ, 0, 10, marks=marks)
+        ax.set_xticks(range(len(cols)), [_short_set(c) for c in cols], rotation=60, ha="right", fontsize=7)
+        ax.set_yticks(range(len(progs)), [f"program {x}" for x in progs], fontsize=7)
+        fig.colorbar(im, ax=ax, shrink=0.6, label="−log10 FDR (capped at 10); numbers = overlapping genes")
+        ax.set_title("Program genes vs signature genes (hypergeometric)")
+        _save(fig, qc, "p2_program_signature_overlap.png", written)
+
+    C = cor.reindex(index=progs, columns=[c for c in cols if c in cor.columns])
+    if C.shape[1]:
+        fig, ax = plt.subplots(figsize=(2.5 + 0.32 * C.shape[1], max(3.6, 1.4 + 0.3 * len(progs))), layout="constrained")
+        im = _heat(ax, C.values.astype(float), DIV, -1, 1)
+        ax.set_xticks(range(C.shape[1]), [_short_set(c) for c in C.columns], rotation=60, ha="right", fontsize=7)
+        ax.set_yticks(range(len(progs)), [f"program {x}" for x in progs], fontsize=7)
+        fig.colorbar(im, ax=ax, shrink=0.6, label="Pearson r across samples")
+        ax.set_title("Program activity vs signature score")
+        _save(fig, qc, "p3_program_signature_correlation.png", written)
+
+    # ---- p4: NTP calls vs LICA-FR labels
+    pairs = [(cl, lab) for cl in calls for lab in label_cols
+             if samples[lab].notna().sum() >= 10 and samples[lab].nunique() >= 2]
+    if pairs:
+        ncol = min(4, len(pairs))
+        nrow = int(np.ceil(len(pairs) / ncol))
+        fig, axes = plt.subplots(nrow, ncol, figsize=(3.6 * ncol, 3.2 * nrow), squeeze=False, layout="constrained")
+        for ax, (cl, lab) in zip(axes.flat, pairs):
+            d = pd.DataFrame({"call": calls[cl], "label": samples[lab]}).dropna()
+            ct = pd.crosstab(d["label"].astype(str), d["call"])
+            R = ct.div(ct.sum(axis=1), axis=0)
+            im = _heat(ax, R.values, SEQ, 0, 1, fmt="{:.0%}")
+            ax.set_xticks(range(ct.shape[1]), ct.columns, rotation=40, ha="right", fontsize=7)
+            ax.set_yticks(range(ct.shape[0]), [f"{i} (n={n})" for i, n in zip(ct.index, ct.sum(axis=1))], fontsize=7)
+            ax.set_xlabel(f"NTP {cl}")
+            ax.set_title(lab, fontsize=9)
+        for ax in list(axes.flat)[len(pairs):]:
+            ax.set_visible(False)
+        fig.colorbar(im, ax=axes.ravel().tolist(), shrink=0.5, label="fraction of label group")
+        fig.suptitle("NTP calls vs LICA-FR author labels (rows sum to 1)", x=0.01, ha="left",
+                     fontweight="bold", color=INK, fontsize=10)
+        _save(fig, qc, "p4_ntp_vs_labels.png", written)
+    return written
