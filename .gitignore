@@ -1,0 +1,44 @@
+# Never commit data or results. Data stays on the server.
+data/
+results/
+envs/
+logs/
+tmp/
+
+# Data and binary formats, anywhere in the tree
+*.RData
+*.rda
+*.rds
+*.h5
+*.h5ad
+*.xlsx
+*.xls
+*.csv
+*.tsv
+*.txt.gz
+*.csv.gz
+*.pkl
+*.parquet
+*.maf
+*.seg
+*.bam
+*.vcf*
+
+# Figures are regenerated from code
+*.pdf
+*.png
+*.svg
+
+# Allow small, hand-written config/metadata tables
+!config/*.tsv
+!config/*.csv
+
+# Python / R / OS clutter
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.Rhistory
+.RData
+.Rproj.user/
+._*
+.DS_Store
