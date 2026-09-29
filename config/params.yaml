@@ -61,6 +61,21 @@ harmonize:
   # Protein-coding only (needs HGNC locus_group); false keeps all mapped genes
   protein_coding_only: false
 
+# ---------------------------------------------------------------- step 03 (survival)
+clinical:
+  CLCA:
+    # Nature 2024 Supplementary Table 1 (user-provided), Table 1a = clinical information
+    supplementary: data/CLCA-2024/41586_2024_7054_MOESM3_ESM.csv   # VERIFY location
+    # No last-follow-up date in the table: censor event-free patients here.
+    # Latest recorded recurrence/death is 2021-09. Check against the cBioPortal implied cutoff (logged).
+    cutoff_date: '2021-09-30'
+    cbioportal_patient: data/CLCA-2024/data_clinical_patient.txt  # VERIFY
+    cbioportal_id_column: PATIENT_ID
+    cbioportal_rfs_time_column: RFS              # VERIFY
+    cbioportal_rfs_time_to_days: 1               # 30.44 if the column is in months
+    cbioportal_rfs_status_column: RFS_STATUS
+    use_cbioportal_censoring: false
+
 # ---------------------------------------------------------------- step 02
 batch:
   methods: [combat, cohort_z]      # combat is the primary; cohort_z is the comparison

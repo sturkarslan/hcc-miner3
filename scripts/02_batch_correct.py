@@ -16,7 +16,8 @@ Outputs (results/02_batch_corrected/):
   expression_<method>_z.csv      MINER3 input, genes x samples, Ensembl IDs
   qc_metrics.tsv                 one row per matrix (uncorrected + each method)
   qc_programs.tsv                marker-program scores: per-cohort mean/SD, LICA-FR label association
-  qc_pca.png                     PC1/PC2 coloured by cohort, one panel per matrix
+  qc/b1..b9_*.png                PCA by cohort and by label, PC-covariate association, per-gene
+                                 cohort variance, metric summary, program scores, RLE, correlation
 """
 
 import argparse
@@ -153,10 +154,9 @@ def main():
     # ---- QC
     Q = B.get("qc", {})
     label_cols = [c for c in samples.columns if c not in ("cohort", "patient")]
-    rows, prog_rows, pcs_for_plot = [], [], {}
+    rows, prog_rows, prog_scores = [], [], {}
     for m, z in finals.items():
         X = pcs(z, Q.get("n_pcs", 20))
-        pcs_for_plot[m] = X[:, :2]
         row = {"matrix": m,
                "silhouette_cohort": silhouette_score(X, batch.values),
                "knn_mixing_cohort": knn_mixing(X, batch.values)}
@@ -171,7 +171,7 @@ def main():
                 row[f"silhouette_{lab}"] = silhouette_score(Xl, samples.loc[has, lab].astype(str).values)
         rows.append(row)
 
-        sc = program_scores(z, genes, Q.get("programs", {}), log)
+        sc = prog_scores[m] = program_scores(z, genes, Q.get("programs", {}), log)
         for prog in sc.columns:
             pr = {"matrix": m, "program": prog}
             for b in batch.unique():
@@ -191,24 +191,9 @@ def main():
              "label silhouettes and within_structure_rho: should stay close to uncorrected)\n%s",
              qc.to_string(index=False, float_format=lambda v: f"{v:.3f}"))
 
-    try:
-        import matplotlib
-        matplotlib.use("Agg")
-        import matplotlib.pyplot as plt
-        fig, axes = plt.subplots(1, len(pcs_for_plot), figsize=(4.5 * len(pcs_for_plot), 4.2), squeeze=False)
-        for ax, (m, X) in zip(axes[0], pcs_for_plot.items()):
-            for b in batch.unique():
-                sel = (batch == b).values
-                ax.scatter(X[sel, 0], X[sel, 1], s=6, alpha=0.6, label=f"{b} (n={sel.sum()})")
-            ax.set_title(m)
-            ax.set_xlabel("PC1")
-            ax.set_ylabel("PC2")
-        axes[0][0].legend(fontsize=8, markerscale=2)
-        fig.tight_layout()
-        fig.savefig(os.path.join(outdir, "qc_pca.png"), dpi=150)
-    except ImportError:
-        log.warning("matplotlib not available; qc_pca.png not written")
-
+    import qc_plots
+    written = qc_plots.batch_report(outdir, finals, corrected, samples, genes, qc, prog_scores, label_cols)
+    log.info("QC figures in %s/qc: %s", outdir, ", ".join(written))
 
 if __name__ == "__main__":
     main()

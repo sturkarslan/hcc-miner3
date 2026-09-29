@@ -257,13 +257,17 @@ def main():
         shared = [g for g in shared if g in protein_coding]
         log.info("Protein-coding shared genes: %d", len(shared))
 
-    det = {}
+    det, sstats = {}, []
     for name in mats:
         m = mats[name].loc[shared]
+        # share of each sample's mapped TPM that falls in the shared genes (1 - renormalization loss)
+        frac_shared = m.sum() / mats[name].sum()
         if H.get("renormalize_tpm", True):
             m = m / m.sum() * 1e6
         mats[name] = m
         det[name] = (m >= H["min_tpm"]).mean(axis=1)
+        sstats.append(pd.DataFrame({"tpm_frac_shared_genes": frac_shared,
+                                    "n_genes_detected": (m >= H["min_tpm"]).sum()}))
     det = pd.DataFrame(det)
     kept = (det >= H["min_frac"]).all(axis=1)
     log.info("Genes passing TPM >= %g in >= %.0f%% of samples in every cohort: %d / %d",
@@ -280,12 +284,19 @@ def main():
     expr.index.name = "ensembl"
     expr.to_csv(os.path.join(outdir, "expression_log2tpm1.csv"))
     samples.to_csv(os.path.join(outdir, "samples.tsv"), sep="\t", index=False)
+    sstats = pd.concat(sstats).loc[samples["sample"]]
+    sstats.index.name = "sample"
+    sstats.to_csv(os.path.join(outdir, "sample_stats.tsv"), sep="\t", float_format="%.4f")
 
     summary = pd.DataFrame(summary)
     summary["shared_genes"] = len(shared)
     summary["genes_after_filter"] = int(kept.sum())
     summary.to_csv(os.path.join(outdir, "summary.tsv"), sep="\t", index=False)
     log.info("Wrote %d genes x %d samples to %s\n%s", *expr.shape, outdir, summary.to_string(index=False))
+
+    import qc_plots
+    written = qc_plots.harmonization_report(outdir, P["harmonize"], list(P["cohorts"]))
+    log.info("QC figures: %s", ", ".join(written))
 
 
 if __name__ == "__main__":
