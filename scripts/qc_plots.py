@@ -43,9 +43,17 @@ plt.rcParams.update({
 
 
 def cohort_colors(cohorts):
-    if len(cohorts) > 3:
+    """Fixed colour per cohort across all figures: slot order follows `cohorts:` in params.yaml,
+    whatever subset or order a figure passes in."""
+    try:
+        from hcc_common import load_params
+        order = list(load_params()["cohorts"])
+    except Exception:
+        order = []
+    order += [c for c in cohorts if c not in order]
+    if len(order) > 3:
         raise ValueError("more than 3 cohorts: facet instead of adding scatter colours")
-    return {c: SLOTS[i] for i, c in enumerate(cohorts)}
+    return {c: SLOTS[order.index(c)] for c in cohorts}
 
 
 def _save(fig, outdir, name, written):

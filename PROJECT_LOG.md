@@ -7,7 +7,7 @@ Keep entries short: date, what, why.
 
 ## Open questions
 
-- **[2026-09-29] Steps 01–02 run on the server (final: SLURM 14944, 14945); step 03 waits for the CLCA supplementary table.** Pre-run checklist from the cloud session, done on the server:
+- **[2026-09-29] Steps 01–03 run on the server (final: SLURM 14944, 14945, 14947).** Pre-run checklist from the cloud session, done on the server:
   - VERIFY entries resolved against the real files: CLCA folder is `data/HCC-CLCA-2024`; LICA-FR annotation columns are `Sample`, `Sample_type`, `primary_diagnosis`, `Per_patient_analysis`, `Boyault_transcriptomic_group`, `molecular_group`, `immune_class_RNAseq_Fluidigm`, `Etiology`. MINER idmap points to the `miner3` env copy.
   - `config/tcga_exclude.tsv` has the 3 fibrolamellar cases (TCGA-DD-A4NB, TCGA-MR-A8JO, TCGA-RC-A6M5).
   - HGNC complete set downloaded to `data/reference/hgnc_complete_set.txt`.
@@ -17,7 +17,7 @@ Keep entries short: date, what, why.
   - Jia & Tang 2021 (J Clin Transl Hepatol, PMC9039713) Table S2 (`JCTH-10-273-s002.csv`, provided by user) pools ICGC LIRI-JP (232), LICA-FR (161) and LIHC-US/TCGA (294) by ICGC donor ID (`DO…`). Grouping by ID block and censoring pattern, the block `DO228883…, DO231795–DO231932, DO44634–DO44868, DO50743–DO50748, DO50810–DO50974` looks like LICA-FR. Only 6 of those donors have vital status + time. **Inference, not confirmed**: no ICGC donor-ID → CHC-ID mapping is available (ICGC DCC portal retired).
   - The HCC-subtypes Shiny app (http://51.159.169.17:3838/HCC-subtypes/) is interactive only; its data can't be retrieved with a plain HTTP fetch. Need its underlying data or to ask the authors.
   - Next option: request follow-up from the LICA-FR authors (Zucman-Rossi lab).
-- **[2026-09-29] CLCA survival: partly resolved, censoring times assumed.** The user provided the Nature 2024 Supplementary Table 1 (`41586_2024_7054_MOESM3_ESM.csv`; **not yet on the server**: copy to `data/HCC-CLCA-2024/`). Table 1a, 494 patients: operation date (day), recurrence and death status, recurrence and death dates (**month only**), and RFS days for recurrences.
+- **[2026-09-29] CLCA survival: partly resolved, censoring times assumed.** The user provided the Nature 2024 Supplementary Table 1 (`data/HCC-CLCA-2024/41586_2024_7054_MOESM3_ESM.csv`). Table 1a, 494 patients: operation date (day), recurrence and death status, recurrence and death dates (**month only**), and RFS days for recurrences.
   - **There is no last-follow-up date.** Event-free patients are censored at an assumed cutoff of `2021-09-30`, because the latest recorded recurrence and death are both in 2021-09. The planned cross-check against cBioPortal can't work: the cBioPortal CLCA `RFS` column has times only for the 169 recurred patients, so it gives no censoring times. The cutoff stays an assumption unless the CLCA authors give a last-follow-up date.
   - OS for deaths = death month (mid-month) − operation date, so ±15 days. RFS for recurrences uses the table's day counts.
   - Usable: OS 384 patients / 74 deaths. 4 deaths have no date and are dropped; 106 have unknown status. RFS 386 / 169 recurrences; 108 unknown. 1 patient has a death month before the recurrence month (rounding), so OS is set to RFS.
@@ -27,6 +27,13 @@ Keep entries short: date, what, why.
 
 ## Decisions
 
+- **[2026-09-29] Step 03 result: survival for TCGA and CLCA.** CLCA reproduces the cloud-session numbers on the server copy of the table (OS 384 patients / 74 deaths; RFS 386 / 169). All 494 IDs match cBioPortal, and all 239 CLCA expression samples match a patient. Survival usable **for expression samples**:
+  - CLCA: OS 181/239 (33 deaths), RFS 184/239 (81 recurrences). The rest have unknown status in the table.
+  - TCGA: OS 360/366 (128 deaths), PFS 360/366 (175 events).
+  - Follow-up: CLCA median ~3.1 years for censored patients and no one at risk beyond 48 months (the cutoff assumption bounds it); TCGA up to 10 years. CLCA OS is better than TCGA's (HBV-dominant, resected cohort).
+  - 5 TCGA expression patients (TCGA-CC-A8HS, -BD-A3ER, -T1-A6J8, -XR-A8TC, -G3-A3CG) are not in the PanCan clinical file. The Xena GDC survival file has OS for them (1 death), but not PFS. Left out rather than mixing sources for 5 patients.
+  - The `s1_kaplan_meier` right panel is titled "Relapse-free survival", but for TCGA it is PFS (CDR PFI).
+- **[2026-09-29] QC figure colours are fixed per cohort** (slot order = `cohorts:` in params.yaml: TCGA, CLCA, LICA_FR). Before this, `cohort_colors()` assigned slots by order of appearance, so the survival figure swapped TCGA and CLCA relative to steps 01–02.
 - **[2026-09-29] Step 02 result: ComBat is the MINER input** (`results/02_batch_corrected/expression_combat_z.csv`, 13,866 × 929). Before correction, CLCA separates on PC2 (TCGA–CLCA gene means r = 0.81; 38% of genes differ > 2-fold). After ComBat, cohort silhouette 0.18 → 0.00 and kNN mixing 0.04 → 0.73, with within-cohort sample structure preserved (ρ 0.999 TCGA, 0.993 CLCA, 1.000 LICA-FR; per-cohort z gives 0.95–0.98). LICA-FR label signal is unchanged: Kruskal–Wallis H for CTNNB1/proliferation/hepatocyte programs by Boyault class 149/143/124 (uncorrected 149/143/129). The CTNNB1 program is highest in G5/G6 and proliferation in G1–G3, as expected.
   - Composition caveat confirmed on real data: before correction, the CTNNB1 program mean is higher in LICA-FR (+0.15) than TCGA (−0.15), consistent with more CTNNB1-mutant tumors in European cohorts. ComBat sets all cohort means to ~0.
 - **[2026-09-29] Bug fixed: TCGA Xena values are log2(TPM + 1), not log2(TPM + 0.001).** My earlier note was wrong. Evidence: zero-TPM entries are stored as 0.0, and back-transforming with 0.001 gave column sums of 1.06×10⁶ (10⁶ + ~1 per gene × 60,616 genes). The first step 01 run (14942) had every shared gene "detected" in all TCGA samples. `pseudocount: 1` now, and TCGA column sums are 1.00×10⁶.
