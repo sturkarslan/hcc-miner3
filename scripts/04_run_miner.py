@@ -75,7 +75,10 @@ def main():
     matrix = args.matrix or M["matrix"]
     expfile = p(os.path.join(P["paths"]["results"], "02_batch_corrected", f"expression_{matrix}_z.csv"))
     outdir = p(os.path.join(P["paths"]["results"], OUT, matrix))
-    log = setup_logging(outdir, "04_run_miner")
+    default_steps = "coexpr,mechinf,subtypes"
+    # separate log per partial run, so e.g. --steps subtypes_filtered does not overwrite the main log
+    log = setup_logging(outdir, "04_run_miner" if args.steps == default_steps
+                        else "04_run_miner_" + args.steps.replace(",", "_"))
     idmap = p(M["idmap"])
     log.info("Input %s; idmap %s; params %s", expfile, idmap, M)
     for f in (expfile, idmap):
