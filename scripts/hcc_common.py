@@ -41,3 +41,14 @@ def require_columns(df, cols, what):
     if missing:
         raise KeyError(f"{what}: missing column(s) {missing}. Available: {list(df.columns)}. "
                        "Fix the column names in config/params.yaml.")
+
+
+def miner_id_backmap(idmap_path, our_ids):
+    """MINER's identifier conversion renames some Ensembl IDs to a different Preferred_Name
+    (often an alternate-locus ID; ~500 of our GENCODE v36 genes). Return {miner_id: our_id}
+    for those, so MINER outputs (regulons, modules, regulators) can be mapped back to the
+    IDs used in results/01_harmonized/genes.tsv. IDs MINER leaves unchanged are not listed."""
+    import pandas as pd
+    m = pd.read_csv(idmap_path, sep="\t", dtype=str)
+    e = m[(m["Source"] == "Ensembl Gene ID") & m["Name"].isin(set(our_ids)) & (m["Name"] != m["Preferred_Name"])]
+    return dict(zip(e["Preferred_Name"], e["Name"]))

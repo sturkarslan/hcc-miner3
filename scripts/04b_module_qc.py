@@ -25,7 +25,7 @@ import os
 import numpy as np
 import pandas as pd
 
-from hcc_common import load_params, p, setup_logging
+from hcc_common import load_params, miner_id_backmap, p, setup_logging
 
 MARKERS = {
     "T_cell": ["CD2", "CD3D", "CD3E", "CD8A", "GZMK", "LCK", "CCL5", "CXCL9", "CXCL10"],
@@ -82,8 +82,10 @@ def main():
     log = setup_logging(outdir, "04b_module_qc")
 
     cdict = os.path.join(mdir, "coexpr", "coexpressionDictionary.json")
-    modules = {k: v for k, v in json.load(open(cdict)).items()}
     z = pd.read_csv(os.path.join(res, "02_batch_corrected", f"expression_{matrix}_z.csv"), index_col=0)
+    back = miner_id_backmap(p(P["miner"]["idmap"]), z.index)
+    log.info("MINER renames %d of our gene IDs; mapping them back", len(back))
+    modules = {k: [back.get(g, g) for g in v] for k, v in json.load(open(cdict)).items()}
     samples = pd.read_csv(os.path.join(res, "01_harmonized", "samples.tsv"), sep="\t", index_col="sample").loc[z.columns]
     genes = pd.read_csv(os.path.join(res, "01_harmonized", "genes.tsv"), sep="\t", index_col="ensembl")
     sstats = pd.read_csv(os.path.join(res, "01_harmonized", "sample_stats.tsv"), sep="\t", index_col="sample").loc[z.columns]
@@ -146,9 +148,11 @@ def main():
     if os.path.exists(rdf_path):
         if os.path.exists(mech_dict):
             mm = json.load(open(mech_dict))
-            if {k: sorted(v) for k, v in mm.items()} != {k: sorted(v) for k, v in json.load(open(cdict)).items()}:
+            if {k: sorted(v) for k, v in mm.items()} != {k: sorted(v) for k, v in json.load(open(cdict)).items()}:  # both MINER IDs
                 log.warning("mechinf re-clustered to different modules than coexpr; mapping regulons to coexpr modules")
         rdf = pd.read_csv(rdf_path)
+        rdf["Gene"] = rdf["Gene"].map(lambda g: back.get(g, g))
+        rdf["Regulator"] = rdf["Regulator"].map(lambda g: back.get(g, g))
         regs = rdf.groupby("Regulon_ID")["Gene"].apply(list)
         regulator = rdf.groupby("Regulon_ID")["Regulator"].first()
         gene2mod = {g: k for k, v in modules.items() for g in v}
