@@ -69,4 +69,4 @@ Other notes:
 
 ## Issues
 
-- **[2026-09-29]** `git push` blocked by SSH key (see Open questions).
+- **[2026-09-29] Resolved.** `git push` was blocked because GitHub didn't recognize the server's SSH key. User added `~/.ssh/id_ed25519.pub` to GitHub; `main` now pushes to `git@github.com:sturkarslan/hcc-miner3.git`.
