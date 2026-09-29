@@ -73,6 +73,9 @@ Each step writes PNGs to `results/<step>/qc/`:
 | `b6_programs_by_cohort`, `b7_programs_by_<label>` | CTNNB1, proliferation, hepatocyte program scores | label differences kept; cohort differences removed (see composition caveat in the log) |
 | `b8_rle` | relative log expression per sample, before vs after ComBat | medians centred on 0 |
 | `b9_sample_correlation_corrected` | sample–sample correlation after correction | cohort blocks gone |
+| `m1_module_size_coherence` | coexpression module size vs PC1 variance share (step 04b) | big modules with low PC1 share (merged signals) |
+| `m2_largest_modules_annotation` | largest modules: eigengene r with marker programs; cohort/label η²; technical \|r\| | cohort or technical association |
+| `m3_module_<id>` | heatmap, eigengene by cohort, gene–eigengene r, module scree | one dominant PC vs several |
 | `s1_kaplan_meier` | OS and RFS by cohort with numbers at risk | plausible event rates and follow-up |
 
 ## Project log

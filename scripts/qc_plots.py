@@ -581,3 +581,123 @@ def survival_report(outdir, surv, cohorts, endpoints=(("OS", "Overall survival")
     fig.tight_layout()
     _save(fig, qc, "s1_kaplan_meier.png", written)
     return written
+
+
+# ================================================================== step 04b
+
+def module_report(outdir, tab, E, zc, modules, samples, top, prog):
+    """tab: modules.tsv table; E: samples x module eigengenes; zc: gene-centered z; top: module ids."""
+    qc = os.path.join(outdir, "qc")
+    written = []
+    cohorts = list(pd.unique(samples["cohort"]))
+    colors = cohort_colors(cohorts)
+    top = list(top)
+
+    # ---- m1: size vs coherence
+    fig, ax = plt.subplots(figsize=(7, 4.2))
+    rest = ~tab.index.isin(top)
+    ax.scatter(tab.loc[rest, "n_genes"], tab.loc[rest, "pc1_var"], s=10, color=BACKGROUND, lw=0, label="other modules")
+    ax.scatter(tab.loc[top, "n_genes"], tab.loc[top, "pc1_var"], s=40, color=SLOTS[0], edgecolor=SURFACE, lw=1,
+               label=f"{len(top)} largest", zorder=3)
+    for k in [k for k in top if tab.loc[k, "n_genes"] >= max(50, 5 * tab["n_genes"].median())]:
+        ax.annotate(f"{k}: {tab.loc[k, 'best_marker_program']} (r={tab.loc[k, 'best_marker_r']:.2f})",
+                    (tab.loc[k, "n_genes"], tab.loc[k, "pc1_var"]), xytext=(6, 4), textcoords="offset points",
+                    fontsize=7.5, color=INK2)
+    ax.set_xscale("log")
+    ax.set_xlabel("genes in module (log)")
+    ax.set_ylabel("variance on module PC1")
+    ax.legend(loc="upper right")
+    ax.set_title("Coexpression modules: size vs coherence (low PC1 share in a big module = merged signals)")
+    _save(fig, qc, "m1_module_size_coherence.png", written)
+
+    # ---- m2: what the largest modules track
+    rcols = [c for c in tab.columns if c.startswith("r_")]
+    ecols = ["cohort_eta2"] + [c for c in tab.columns if c.endswith("_eta2") and c != "cohort_eta2"]
+    tcols = [c for c in tab.columns if c.startswith("max_within_cohort_abs_r_")]
+    labels = [f"{k} (n={int(tab.loc[k, 'n_genes'])})" for k in top]
+    nc = len(rcols) + len(ecols) + len(tcols)
+    fig, (a, b) = plt.subplots(1, 2, figsize=(3.0 + 0.62 * nc, 0.5 * len(top) + 2.6),
+                               gridspec_kw={"width_ratios": [len(rcols), len(ecols) + len(tcols)]}, layout="constrained")
+    R = tab.loc[top, rcols].values.astype(float)
+    im1 = a.imshow(R, cmap=DIV, vmin=-1, vmax=1, aspect="auto")
+    a.set_xticks(range(len(rcols)), [c[2:] for c in rcols], rotation=40, ha="right")
+    a.set_yticks(range(len(top)), labels)
+    a.set_title("r with markers")
+    V = tab.loc[top, ecols + tcols].values.astype(float)
+    im2 = b.imshow(V, cmap=SEQ, vmin=0, vmax=1, aspect="auto")
+    b.set_xticks(range(len(ecols + tcols)),
+                 [c.replace("_eta2", " η²") for c in ecols] +
+                 ["|r| " + {"tpm_frac_shared_genes": "TPM share", "n_genes_detected": "genes detected"}.get(
+                     c.replace("max_within_cohort_abs_r_", ""), c.replace("max_within_cohort_abs_r_", ""))
+                  for c in tcols], rotation=40, ha="right")
+    b.set_yticks([])
+    b.set_title("cohort, labels, technical")
+    for ax_, M_ in ((a, R), (b, V)):
+        ax_.grid(False)
+        for (i, j), v in np.ndenumerate(M_):
+            if not np.isnan(v):
+                ax_.text(j, i, f"{v:.2f}", ha="center", va="center", fontsize=7,
+                         color=SURFACE if abs(v) > 0.55 else INK2)
+    fig.colorbar(im1, ax=a, location="bottom", shrink=0.6, label="Pearson r")
+    fig.colorbar(im2, ax=b, location="bottom", shrink=0.6, label="η² (cohort, labels) or max within-cohort |r|")
+    _save(fig, qc, "m2_largest_modules_annotation.png", written)
+
+    # ---- m3: one figure per large module
+    for k in top:
+        g = modules[k]
+        e = E[k]
+        es = (e - e.mean()) / e.std()
+        x = zc.loc[g]
+        r = pd.Series(((x.values - x.values.mean(1, keepdims=True)) / (x.values.std(1, keepdims=True) + 1e-12)) @ es.values
+                      / len(es), index=g).sort_values(ascending=False)
+        if len(r) > 400:
+            r = r.iloc[np.linspace(0, len(r) - 1, 400).astype(int)]
+        order = _ordered_samples(samples, cohorts, key=e)
+        coh = samples.loc[order, "cohort"]
+        fig = plt.figure(figsize=(12, 5.2), layout="constrained")
+        gs = fig.add_gridspec(2, 3, width_ratios=[5, 1.3, 1.3], height_ratios=[1, 1])
+        ax = fig.add_subplot(gs[:, 0])
+        im = ax.imshow(x.loc[r.index, order].values, cmap=DIV, vmin=-2, vmax=2, aspect="auto", interpolation="nearest")
+        band = np.array([[matplotlib.colors.to_rgb(colors[c]) for c in coh]])
+        n = len(order)
+        ax.imshow(band, extent=(-0.5, n - 0.5, -0.03 * len(r) - 0.5, -0.5), aspect="auto", clip_on=False)
+        ax.set_ylim(len(r) - 0.5, -0.03 * len(r) - 0.5)
+        _cohort_blocks(ax, coh, colors)
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.grid(False)
+        ax.set_xlabel("samples (by cohort, then eigengene)")
+        ax.set_ylabel(f"{len(g)} genes (by r to eigengene{', 400 shown' if len(g) > 400 else ''})")
+        ax.set_title(f"Module {k}: {len(g)} genes; PC1 {tab.loc[k, 'pc1_var']:.0%}, PC2 {tab.loc[k, 'pc2_var']:.0%}; "
+                     f"best marker {tab.loc[k, 'best_marker_program']} (r={tab.loc[k, 'best_marker_r']:.2f})")
+        fig.colorbar(im, ax=ax, shrink=0.6, label="gene-centered z", location="left", pad=0.01)
+        _cohort_legend(ax, colors, samples["cohort"].value_counts(), ncol=3, loc="upper left", bbox_to_anchor=(0, -0.04))
+        # eigengene by cohort
+        b1 = fig.add_subplot(gs[0, 1])
+        bp = b1.boxplot([e[samples["cohort"] == c].values for c in cohorts], widths=0.55, patch_artist=True,
+                        showfliers=False, medianprops=dict(color=SURFACE, lw=1.5), whiskerprops=dict(color=AXIS),
+                        capprops=dict(color=AXIS))
+        for patch, c in zip(bp["boxes"], cohorts):
+            patch.set(facecolor=colors[c], edgecolor=colors[c])
+        b1.set_xticks(range(1, len(cohorts) + 1), cohorts, rotation=30)
+        b1.set_title(f"eigengene (cohort η² {tab.loc[k, 'cohort_eta2']:.2f})", fontsize=8.5)
+        b1.grid(axis="x", visible=False)
+        # gene-eigengene r distribution
+        b2 = fig.add_subplot(gs[0, 2])
+        allr = ((x.values - x.values.mean(1, keepdims=True)) / (x.values.std(1, keepdims=True) + 1e-12)) @ es.values / len(es)
+        b2.hist(allr, bins=30, color=SLOTS[0], edgecolor=SURFACE, lw=0.5)
+        b2.axvline(0.3, color=INK2, lw=1, ls="--")
+        b2.set_title(f"gene r to eigengene ({(allr < 0.3).mean():.0%} < 0.3)", fontsize=8.5)
+        b2.set_xlabel("r")
+        # scree of the module
+        b3 = fig.add_subplot(gs[1, 1:])
+        s = np.linalg.svd(x.values - x.values.mean(1, keepdims=True), compute_uv=False)
+        v = (s ** 2 / (s ** 2).sum())[:10]
+        b3.bar(range(1, len(v) + 1), v, color=[SLOTS[0]] + [BACKGROUND] * (len(v) - 1), edgecolor=SURFACE, lw=2)
+        b3.set_xticks(range(1, len(v) + 1))
+        b3.set_xlabel("module principal component")
+        b3.set_ylabel("variance share")
+        b3.set_title("one dominant PC = one signal; several similar PCs = merged signals", fontsize=8.5)
+        b3.grid(axis="x", visible=False)
+        _save(fig, qc, f"m3_module_{k}.png", written)
+    return written
