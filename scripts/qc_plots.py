@@ -808,3 +808,28 @@ def subtype_report(outdir, enr, ari, pt, cor, calls, samples, label_cols, states
                      fontweight="bold", color=INK, fontsize=10)
         _save(fig, qc, "p4_ntp_vs_labels.png", written)
     return written
+
+
+def genomic_report(outdir, info, cohorts):
+    """g1: alteration frequency per feature and cohort (profiled samples only).
+    info: genomic_features_info.tsv rows (kept features)."""
+    qc = os.path.join(outdir, "qc")
+    written = []
+    colors = cohort_colors(cohorts)
+    info = info.sort_values(["type", "freq"], ascending=[True, True])
+    n = len(info)
+    fig, ax = plt.subplots(figsize=(6.4, 0.5 + 0.2 * n))
+    y = np.arange(n)
+    for j, c in enumerate(cohorts):
+        f = info[f"freq_{c}"].where(info[f"profiled_{c}"] > 0)
+        ax.scatter(100 * f, y + (j - 1) * 0.18, s=16, color=colors[c], label=c, zorder=3)
+    ax.set_yticks(y)
+    ax.set_yticklabels([f"{i}  [{t.replace('_', ' ')}]" for i, t in zip(info.index, info["type"])], fontsize=7)
+    ax.set_xlabel("% of profiled samples altered (missing dot = not profiled in that cohort)")
+    ax.set_ylim(-0.7, n - 0.3)
+    ax.grid(axis="y", visible=False)
+    ax.legend(loc="lower right")
+    ax.set_title("Genomic features for causal inference, by cohort")
+    fig.tight_layout()
+    _save(fig, qc, "g1_feature_frequency.png", written)
+    return written

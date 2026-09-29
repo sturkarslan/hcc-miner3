@@ -139,3 +139,55 @@ post:
     fdr: 0.05
     seed: 1
     center: all                # all = the step-02 z-score across samples; cohort = re-centre within cohort
+
+# ---------------------------------------------------------------- step 03b (genomic features for causal inference)
+genomics:
+  min_altered: 15          # altered samples among profiled
+  min_freq: 0.03           # fraction of profiled samples
+  arm_min_fraction: 0.5    # LICA-FR arm call: >= this fraction of the arm's covered length gained / lost
+  # Acrocentric p arms (no genes, unreliable segments) and X (LICA-FR only; sex-confounded)
+  exclude_arms: [13p, 14p, 15p, 21p, 22p, Xp, Xq]
+  # Curated HCC drivers: LICA-FR driver table genes + TCGA-LIHC 2017 significantly mutated genes + CLCA 2024 drivers.
+  # Frequent long-gene passengers (TTN, MUC16, ...) are deliberately not included.
+  driver_genes: [CTNNB1, TP53, AXIN1, APC, TERT, NFE2L2, KEAP1, ARID1A, ARID2, ARID1B, BAP1, KMT2A, KMT2C, KMT2D,
+                 ALB, APOB, RPS6KA3, TSC1, TSC2, PTEN, PIK3CA, RB1, CDKN2A, CDKN1A, IRF2, HNF1A, ACVR2A, RPL22,
+                 SF3B1, IL6ST, EEF1A1, ATM, JAK1, BRD7, FOXO1, HPD, MET, KRAS, NRAS, STAT3, HMBS, PCF11, LZTR1,
+                 CREB3L3, AZIN1, GPATCH4, NUP133, CPS1, CYP2E1, FGA, SMARCA4, NCOR1, NOTCH2]
+  mutation_classes: [Missense_Mutation, Nonsense_Mutation, Frame_Shift_Del, Frame_Shift_Ins, In_Frame_Del,
+                     In_Frame_Ins, Splice_Site, Translation_Start_Site, Nonstop_Mutation]
+  pathways:                # OR of member gene mutations (TCGA-LIHC 2017 pathway groups)
+    WNT: [CTNNB1, AXIN1, APC]
+    p53_cell_cycle: [TP53, RB1, CDKN2A, CDKN1A]
+    NRF2_oxidative_stress: [NFE2L2, KEAP1]
+    chromatin_remodeling: [ARID1A, ARID1B, ARID2, BAP1, KMT2A, KMT2C, KMT2D, SMARCA4]
+    PI3K_mTOR: [TSC1, TSC2, PTEN, PIK3CA, RPS6KA3]
+    hepatocyte_differentiation: [ALB, APOB, HNF1A, CPS1, CYP2E1, FGA]
+  focal:                   # TCGA GISTIC +2 (amp) / -2 (hd); LICA-FR driver table values
+    CCND1_FGF19: {type: amp, genes: [CCND1, FGF19], licafr_column: CCND1_FGF19_Mut, licafr_values: [FA]}
+    MYC:         {type: amp, genes: [MYC], licafr_column: MYC_Mut, licafr_values: [FA]}
+    VEGFA:       {type: amp, genes: [VEGFA]}
+    TERT:        {type: amp, genes: [TERT], licafr_column: TERT_Mut, licafr_values: [focal_ampl]}
+    MET:         {type: amp, genes: [MET], licafr_column: MET_alt, licafr_values: [FA]}
+    CDKN2A:      {type: hd, genes: [CDKN2A], licafr_column: CDKN2A_Mut, licafr_values: [HD]}
+    PTEN:        {type: hd, genes: [PTEN], licafr_column: PTEN_alt, licafr_values: [HD]}
+    RB1:         {type: hd, genes: [RB1], licafr_column: RB1_alt, licafr_values: [HD]}
+    AXIN1:       {type: hd, genes: [AXIN1], licafr_column: AXIN1_alt, licafr_values: [HD]}
+  TCGA:
+    maf: data/LIHC-TCGA-PanCancerAtlas_2018/data_mutations.txt
+    sequenced_case_list: data/LIHC-TCGA-PanCancerAtlas_2018/case_lists/cases_sequenced.txt
+    arm_cna: data/LIHC-TCGA-PanCancerAtlas_2018/data_armlevel_cna.txt
+    gistic: data/LIHC-TCGA-PanCancerAtlas_2018/data_cna.txt
+    cna_case_list: data/LIHC-TCGA-PanCancerAtlas_2018/case_lists/cases_cna.txt
+  CLCA:
+    maf: data/HCC-CLCA-2024/data_mutations.txt       # WGS, GRCh37
+    sequenced_case_list: data/HCC-CLCA-2024/case_lists/cases_sequenced.txt
+    tert_promoter_hotspots_hg19: [1295228, 1295250]   # C228T, C250T
+  LICA_FR:
+    mutations: data/LICA-FR/somatic_mutations_529s.RData
+    mutations_object: mutation.dat_revised
+    mutation_class_keep: [Missense, Truncating, Inframe]
+    min_vaf: 0.1             # TUMOR_AF.brc; reproduces the curated driver table
+    driver_table: data/LICA-FR/summary_driver_alterations_table_529s.xlsx
+    segments: data/LICA-FR/cna_data_529.RData
+    segments_object: wxs_seg
+    cytoband: data/reference/cytoBand_hg38.txt.gz      # LICA-FR segments are hg38 (see PROJECT_LOG)
