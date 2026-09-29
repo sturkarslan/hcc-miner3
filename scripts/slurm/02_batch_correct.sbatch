@@ -8,6 +8,7 @@
 # Submit from the project root: sbatch scripts/slurm/02_batch_correct.sbatch
 set -euo pipefail
 cd "${SLURM_SUBMIT_DIR:-.}"
-source "$(conda info --base)/etc/profile.d/conda.sh"
+source "${CONDA_BASE:-/users/sturkars/mambaforge}/etc/profile.d/conda.sh"
+export PYTHONUTF8=1
 conda activate "$PWD/envs/hcc-prep"
 python scripts/02_batch_correct.py "$@"

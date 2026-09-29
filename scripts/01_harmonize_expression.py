@@ -85,13 +85,28 @@ def _split_multi(s):
 
 def build_symbol_maps(idcfg, log):
     """Ordered list of (tier, {symbol: set(ensembl)}) plus an Ensembl -> symbol table."""
-    tiers = {t: {} for t in ("hgnc_symbol", "miner_gene_name", "hgnc_prev", "alias")}
+    tiers = {t: {} for t in ("gencode", "hgnc_symbol", "miner_gene_name", "hgnc_prev", "alias")}
     ens2sym = {}
     protein_coding = None
 
     def add(tier, sym, ens):
         if sym and isinstance(ens, str) and ens.startswith("ENSG"):
             tiers[tier].setdefault(sym, set()).add(ens)
+
+    # GENCODE release of the Ensembl-ID cohort (TCGA, v36) first, so symbols map to the same
+    # gene IDs as TCGA. HGNC's current IDs differ for some genes (e.g. SOD2).
+    gc_path = p(idcfg.get("gencode_probemap"))
+    if gc_path and os.path.exists(gc_path):
+        g = pd.read_csv(gc_path, sep="\t", dtype=str)
+        require_columns(g, ["id", "gene"], "GENCODE probemap")
+        g = g[~g["id"].str.endswith("_PAR_Y")]
+        for r in g.itertuples(index=False):
+            ens = r.id.split(".")[0]
+            add("gencode", r.gene, ens)
+            ens2sym.setdefault(ens, r.gene)
+        log.info("GENCODE probemap: %d gene names", len(tiers["gencode"]))
+    elif gc_path:
+        log.warning("GENCODE probemap not found (%s)", gc_path)
 
     hgnc_path = p(idcfg.get("hgnc"))
     if hgnc_path and os.path.exists(hgnc_path):
@@ -124,7 +139,8 @@ def build_symbol_maps(idcfg, log):
 
 def map_symbols(ids, tiers):
     """Return DataFrame(input_id, ensembl, status). First tier with any hit wins;
-    a symbol with >1 Ensembl ID in that tier is ambiguous and dropped."""
+    a symbol with >1 Ensembl ID in that tier is ambiguous and dropped (except in the
+    GENCODE tier, where it falls through to the HGNC tiers)."""
     rows = []
     for s in ids:
         s_str = str(s)
@@ -133,6 +149,8 @@ def map_symbols(ids, tiers):
             continue
         for tier, mp in tiers:
             hit = mp.get(s_str)
+            if hit and tier == "gencode" and len(hit) > 1:
+                continue  # duplicated name in GENCODE: let HGNC decide
             if hit:
                 rows.append((s, next(iter(hit)), tier) if len(hit) == 1
                             else (s, None, f"ambiguous:{tier}:{'|'.join(sorted(hit))}"))
@@ -186,18 +204,22 @@ def select_tcga(df, cfg, log):
 
 def select_licafr(df, cfg, log):
     ann = pd.read_excel(p(cfg["annotation"]))
-    idc, typc = cfg["annotation_id_column"], cfg["sample_type_column"]
+    idc = cfg["annotation_id_column"]
+    filters = cfg["keep_filters"]  # {column: [allowed values]}, all must hold
     labels = cfg.get("label_columns", {}) or {}
-    require_columns(ann, [idc, typc] + list(labels.values()), "LICA-FR annotation")
+    require_columns(ann, [idc] + list(filters) + list(labels.values()), "LICA-FR annotation")
     ann = ann.copy()
     ann["sample"] = ann[idc].astype(str)
     for a, b in (cfg.get("annotation_id_prefix_map") or {}).items():
         ann["sample"] = ann["sample"].str.replace(f"^{re.escape(a)}", b, regex=True)
-    log.info("LICA-FR annotation %s counts: %s", typc, ann[typc].value_counts(dropna=False).to_dict())
-    keep = ann[ann[typc].isin(cfg["keep_values"])]
+    keep_mask = pd.Series(True, index=ann.index)
+    for col, vals in filters.items():
+        log.info("LICA-FR annotation %s counts: %s", col, ann[col].value_counts(dropna=False).to_dict())
+        keep_mask &= ann[col].isin(vals)
+    keep = ann[keep_mask]
     in_expr = keep[keep["sample"].isin(df.columns)]
-    log.info("LICA-FR: %d annotated primary HCC, %d with expression; %d expression columns not annotated",
-             len(keep), len(in_expr), len(set(df.columns) - set(ann["sample"])))
+    log.info("LICA-FR: %d annotated samples pass %s, %d with expression; expression columns not annotated: %s",
+             len(keep), filters, len(in_expr), sorted(set(df.columns) - set(ann["sample"])))
     df = df[in_expr["sample"].tolist()]
     samples = in_expr[["sample"]].copy()
     samples["patient"] = samples["sample"]

@@ -130,7 +130,30 @@ def build_clca(cfg, log):
     return out
 
 
-BUILDERS = {"CLCA": build_clca}
+def build_tcga(cfg, log):
+    """TCGA-LIHC from the cBioPortal PanCan patient file (times from TCGA-CDR, in months).
+    RFS endpoint = PFS (CDR progression-free interval, recommended for LIHC)."""
+    c = pd.read_csv(p(cfg["cbioportal_patient"]), sep="\t", comment="#", dtype=str).set_index("PATIENT_ID")
+    out = pd.DataFrame(index=c.index)
+    out.index.name = "patient"
+    out["cohort"] = "TCGA"
+    m2d = float(cfg.get("months_to_days", 30.44))
+    for ep, (tcol, scol) in {"OS": cfg["os_columns"], "RFS": cfg["rfs_columns"]}.items():
+        missing = [x for x in (tcol, scol) if x not in c.columns]
+        if missing:
+            raise KeyError(f"TCGA patient file: missing {missing}. Columns: {list(c.columns)}")
+        out[f"{ep}_event"] = pd.to_numeric(c[scol].str.split(":").str[0], errors="coerce")
+        out[f"{ep}_time"] = (pd.to_numeric(c[tcol], errors="coerce") * m2d).clip(lower=1)
+        out[f"{ep}_time_source"] = np.where(out[f"{ep}_time"].notna(), f"cbioportal_{tcol}", "missing")
+        log.info("TCGA %s (%s/%s): %d with time, %d events", ep, tcol, scol,
+                 out[f"{ep}_time"].notna().sum(), int(out.loc[out[f"{ep}_time"].notna(), f"{ep}_event"].sum()))
+    for new, col in (cfg.get("covariates") or {}).items():
+        if col in c.columns:
+            out[new] = c[col]
+    return out
+
+
+BUILDERS = {"CLCA": build_clca, "TCGA": build_tcga}
 
 
 def main():
@@ -151,7 +174,11 @@ def main():
         if name not in BUILDERS:
             log.warning("no survival builder for %s yet; skipped", name)
             continue
-        s = BUILDERS[name](cfg, log)
+        try:
+            s = BUILDERS[name](cfg, log)
+        except FileNotFoundError as e:
+            log.warning("%s: input file missing (%s); skipped", name, e)
+            continue
         s.to_csv(os.path.join(outdir, f"survival_{name}.tsv"), sep="\t")
         for ep in ("OS", "RFS"):
             m = s[[f"{ep}_time", f"{ep}_event"]].dropna().astype({f"{ep}_event": int})

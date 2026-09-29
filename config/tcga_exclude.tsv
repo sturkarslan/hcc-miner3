@@ -1,2 +1,5 @@
 # TCGA-LIHC samples or patients to drop before building the network, one per line (tab-separated notes allowed).
 # TODO: add the 3 fibrolamellar carcinomas (histology column of the cBioPortal clinical file).
+TCGA-DD-A4NB	Fibrolamellar Carcinoma
+TCGA-MR-A8JO	Fibrolamellar Carcinoma
+TCGA-RC-A6M5	Fibrolamellar Carcinoma

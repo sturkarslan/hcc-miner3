@@ -12,10 +12,10 @@ paths:
 # ---------------------------------------------------------------- step 01
 cohorts:
   TCGA:
-    # UCSC Xena GDC hub; values are log2(TPM + 0.001), versioned Ensembl IDs (GENCODE v36)
+    # UCSC Xena GDC hub; values are log2(TPM + 1) (zero TPM stored as 0.0), versioned Ensembl IDs (GENCODE v36)
     expression: data/LIHC-TCGA-GDC-Xena/TCGA-LIHC.star_tpm.tsv.gz
     format: xena_log2tpm
-    pseudocount: 0.001
+    pseudocount: 1
     id_type: ensembl
     # Primary tumors only: TCGA sample-type code 01, vial A
     sample_regex: '^TCGA-..-....-01A'
@@ -23,30 +23,35 @@ cohorts:
     exclude_list: config/tcga_exclude.tsv
   CLCA:
     # cBioPortal format: Hugo_Symbol [, Entrez_Gene_Id], samples...
-    expression: data/CLCA-2024/data_mrna_seq_tpm.txt   # VERIFY folder name
+    expression: data/HCC-CLCA-2024/data_mrna_seq_tpm.txt
     format: cbioportal_tpm
     id_type: symbol
   LICA_FR:
-    expression: data/LICA-FR/RNAseq_tpm_457s.RData     # VERIFY folder name
+    expression: data/LICA-FR/RNAseq_tpm_457s.RData
     format: rdata_tpm
     rdata_object: tpm_
     id_type: symbol
     annotation: data/LICA-FR/clinical_molecular_annotations.xlsx
-    annotation_id_column: sample_id        # VERIFY; values like '#1010T', mapped '#' -> 'CHC'
+    annotation_id_column: Sample           # values like '#1010T', mapped '#' -> 'CHC'
     annotation_id_prefix_map: {'#': 'CHC'}
-    # Keep rows where this column is in `keep_values` (drops NTL, relapse, metastasis, HCC-on-HCA)
-    sample_type_column: tissue_type        # VERIFY
-    keep_values: [HCC]                     # VERIFY
+    # Keep rows passing every filter: primary tumors (drops NTL, relapse, metastasis),
+    # HCC (drops HCC-on-HCA), one tumor per patient (authors' Per_patient_analysis flag)
+    keep_filters:
+      Sample_type: [primary]
+      primary_diagnosis: [HCC]
+      Per_patient_analysis: ['yes']
     # Labels carried into the sample table and used for QC in step 02
-    label_columns:                         # VERIFY
-      boyault: Boyault_class
+    label_columns:
+      boyault: Boyault_transcriptomic_group
       molecular_group: molecular_group
-      immune_class: immune_class
-      etiology: etiology
+      immune_class: immune_class_RNAseq_Fluidigm
+      etiology: Etiology
 
 id_mapping:
+  # Gene names of the GENCODE release used by TCGA (v36, Xena probemap); first mapping tier
+  gencode_probemap: data/LIHC-TCGA-GDC-Xena/gencode.v36.annotation.gtf.gene.probemap
   # MINER3 identifier_mappings.txt (Preferred_Name = Ensembl, Name = identifier, Source)
-  miner_idmap: external/miner3_mattwall/miner/data/identifier_mappings.txt   # VERIFY path
+  miner_idmap: /users/sturkars/mambaforge/envs/miner3/lib/python3.11/site-packages/miner/data/identifier_mappings.txt
   # Optional HGNC complete set (https://www.genenames.org/download/); null to skip
   hgnc: data/reference/hgnc_complete_set.txt
   # Symbols that map to more than one Ensembl ID are dropped and logged
@@ -65,16 +70,24 @@ harmonize:
 clinical:
   CLCA:
     # Nature 2024 Supplementary Table 1 (user-provided), Table 1a = clinical information
-    supplementary: data/CLCA-2024/41586_2024_7054_MOESM3_ESM.csv   # VERIFY location
+    supplementary: data/HCC-CLCA-2024/41586_2024_7054_MOESM3_ESM.csv
     # No last-follow-up date in the table: censor event-free patients here.
     # Latest recorded recurrence/death is 2021-09. Check against the cBioPortal implied cutoff (logged).
     cutoff_date: '2021-09-30'
-    cbioportal_patient: data/CLCA-2024/data_clinical_patient.txt  # VERIFY
+    # cBioPortal RFS has times for recurred patients only (169/386), so it cannot show the censoring cutoff
+    cbioportal_patient: data/HCC-CLCA-2024/data_clinical_patient.txt
     cbioportal_id_column: PATIENT_ID
-    cbioportal_rfs_time_column: RFS              # VERIFY
-    cbioportal_rfs_time_to_days: 1               # 30.44 if the column is in months
+    cbioportal_rfs_time_column: RFS              # "Relapse-free survival in days"
+    cbioportal_rfs_time_to_days: 1
     cbioportal_rfs_status_column: RFS_STATUS
     use_cbioportal_censoring: false
+  TCGA:
+    # PanCan 2018 patient file; OS/PFS times are TCGA-CDR values in months
+    cbioportal_patient: data/LIHC-TCGA-PanCancerAtlas_2018/data_clinical_patient.txt
+    months_to_days: 30.44
+    os_columns: [OS_MONTHS, OS_STATUS]
+    rfs_columns: [PFS_MONTHS, PFS_STATUS]   # CDR PFI, used as the RFS-like endpoint
+    covariates: {age: AGE, sex: SEX, stage: AJCC_PATHOLOGIC_TUMOR_STAGE, subtype: SUBTYPE}
 
 # ---------------------------------------------------------------- step 02
 batch:

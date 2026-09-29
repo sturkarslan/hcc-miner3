@@ -5,10 +5,10 @@ channels: [conda-forge]
 dependencies:
   - python=3.11
   - pandas
-  - numpy
+  - numpy>=2
   - scipy
   - scikit-learn
-  - matplotlib
+  - matplotlib>=3.9
   - pyyaml
   - openpyxl
   - pyreadr
