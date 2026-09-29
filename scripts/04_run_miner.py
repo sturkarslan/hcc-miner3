@@ -7,6 +7,7 @@ Runs, as in the working GBM pipeline (GBM-15370004/analysis_stringent_sct):
                                  mechanisticOutput.json (re-derives the coexpression modules itself)
   miner3-subtypes -> subtypes/   coherent/over/under/dysregulatedMembers.csv, transcriptional_programs.json,
                                  transcriptional_states.json, programs_vs_states.csv
+  --steps subtypes_filtered -> subtypes_filtered/  same, on mechinf/regulons_filtered.json (step 04c)
 All with --skip_tpm: the input is already z-scored (step 02). MINER keeps only genes in its
 identifier_mappings.txt.
 
@@ -50,10 +51,14 @@ def summarize(outdir, log):
         r = pd.read_csv(rdf)
         s["regulators"] = r["Regulator"].nunique() if "Regulator" in r else None
         s["regulon_genes_unique"] = r["Gene"].nunique() if "Gene" in r else None
-    for key in ("transcriptional_programs", "transcriptional_states"):
-        f = os.path.join(outdir, "subtypes", f"{key}.json")
-        if os.path.exists(f):
-            s[key.split("_")[1]] = len(json.load(open(f)))
+    for sub in ("subtypes", "subtypes_filtered"):
+        for key in ("transcriptional_programs", "transcriptional_states"):
+            f = os.path.join(outdir, sub, f"{key}.json")
+            if os.path.exists(f):
+                s[f"{key.split('_')[1]}{sub[8:]}"] = len(json.load(open(f)))
+    f = os.path.join(outdir, "mechinf", "regulons_filtered.json")
+    if os.path.exists(f):
+        s["regulons_filtered"] = len(json.load(open(f)))
     log.info("Summary: %s", s)
     return s
 
@@ -92,6 +97,10 @@ def main():
     if "subtypes" in steps:
         run(["miner3-subtypes", expfile, idmap, os.path.join(outdir, "mechinf", "regulons.json"),
              os.path.join(outdir, "subtypes"), "--skip_tpm"], log)
+    if "subtypes_filtered" in steps:
+        # regulons without those built on technical modules (step 04c)
+        run(["miner3-subtypes", expfile, idmap, os.path.join(outdir, "mechinf", "regulons_filtered.json"),
+             os.path.join(outdir, "subtypes_filtered"), "--skip_tpm"], log)
 
     s = summarize(outdir, log)
     pd.DataFrame([dict(matrix=matrix, **s)]).to_csv(os.path.join(outdir, "summary.tsv"), sep="\t", index=False)

@@ -122,3 +122,8 @@ miner:
   max_exclusion: 0.5
   overexp_threshold: 80
   random_state: 12
+  # Step 04c: coexpression modules judged technical (RNA-quality axis; step 04b, PROJECT_LOG).
+  # Regulons with >= exclude_min_fraction of genes in them are dropped before subtypes_filtered.
+  # Module IDs are from THIS run (random_state 12); re-check them if MINER is rerun.
+  exclude_modules: [1, 2, 4, 6]
+  exclude_min_fraction: 0.5
