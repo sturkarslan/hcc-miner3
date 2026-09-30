@@ -69,13 +69,11 @@ unseen cohort.
 ### Legend
 
 **Fig. 2 | Program-based risk, its biology and its validation.**
-**a**, The eight largest adverse (red) and protective (blue) weights of the ridge model trained on TCGA recurrence
-(36-month horizon).
+**a**, Largest adverse (red) and protective (blue) weights of the ridge model trained on TCGA recurrence.
 **b**, Risk score (within-cohort z) by published HCC class, labelled by biology. Hoshida and Chiang classes are
 nearest-template-prediction calls (all 929 tumours); Boyault classes are the LICA-FR authors' labels (n = 324).
 Bars, median and interquartile range; Kruskal–Wallis P.
-**c**, States ordered by mean risk score. Top, fraction of each state in selected classes and with TP53 or CTNNB1
-mutations; middle, risk score; bottom, observed recurrence as GuanRank computed within each cohort (TCGA and CLCA; 1,
+**c**, States ordered by mean risk score. Top, class and mutation fractions; middle, risk score; bottom, observed recurrence as GuanRank computed within each cohort (TCGA and CLCA; 1,
 earliest event). Boxes, median and interquartile range; whiskers, 1.5× interquartile range. State mean risk versus
 median GuanRank: Spearman ρ = 0.64, P = 2.2 × 10⁻⁴ (28 states with ≥ 5 tumours).
 **d**, **e**, Kaplan–Meier curves for the within-cohort top 20% of risk scores versus the rest. **d**, Cross-cohort
@@ -89,8 +87,8 @@ cell and tumour mean expression). Adding the network score to all known scores: 
 cohort.
 **h**, Leave-one-cohort-out stability: the network, causal inference and risk model were rebuilt without each
 discovery cohort. Bars show regulators recovered; median correlation, in the held-out cohort, between each program's
-activity and its best leave-out match (all programs and the quarter with the largest risk weights); and the fraction of
-high-confidence driver–regulator edges recovered (CTNNB1 and all drivers). Text, C-index of models built entirely
+activity and its best leave-out match (all programs; the quarter with the largest risk weights); and high-confidence
+driver–regulator edges recovered (CTNNB1; all drivers). Text, C-index of models built entirely
 without the test cohort.
 
 ---
