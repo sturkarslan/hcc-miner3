@@ -1,0 +1,677 @@
+#!/usr/bin/env python
+"""Step 07c: figures relating MINER programs and states to published HCC subtypes and to risk.
+
+f1_integrated_map      programs x states (mean regulon dysregulation, over - under), states ordered by
+                       mean risk score, programs by risk-model weight. Tracks above: state size, mean
+                       risk, cohort mix, published-subtype composition (NTP Hoshida / Boyault / Chiang,
+                       LICA-FR author labels), driver alteration frequencies. Left: risk weight and
+                       prognostic meta-z per program. Right: top regulators and best known signature.
+f2_known_vs_new        per program: best gene-set overlap (-log10 FDR) vs best activity correlation with
+                       any known signature; colour = prognostic meta-z. "New" = prognostic, no overlap at
+                       FDR < 0.05 with >= min_fold, and |r| < known_r.
+f3_risk_by_subtype     risk score (within-cohort z) by published class, small multiples, per sample.
+f4_program_signatures  programs x curated HCC / prognostic / hallmark signatures: activity correlation;
+                       dot = direct gene overlap (FDR < 0.05, >= min_fold).
+f5_state_risk          state-level Cox z per cohort + meta-z, with each state's dominant subtype calls.
+f6_beyond_known_subtypes  per program: prognostic meta-z before vs after adjusting (within cohort) for known
+                       subtype scores (post.figures.adjust_signatures) and the per-sample global mean z;
+                       the risk score is tested the same way (risk_score_beyond_known.tsv). Panel b:
+                       cross-cohort C-index of Cox models on known-subtype scores vs the MINER program
+                       model, and the LR test of adding the MINER score (risk_head_to_head.tsv).
+
+Risk score = MINER ridge on program activity trained in TCGA (RFS, 36-month horizon; step 06). It is
+in-sample for TCGA and out-of-sample for CLCA and LICA-FR; shown as a within-cohort z.
+Tables: program_annotation.tsv, state_annotation_risk.tsv (results/07_post/figures/).
+"""
+
+import argparse
+import json
+import os
+
+import numpy as np
+import pandas as pd
+from scipy import stats
+
+from hcc_common import load_params, p, setup_logging
+
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt  # noqa: E402
+from matplotlib import gridspec  # noqa: E402
+
+import qc_plots as Q  # noqa: E402  (palette, rcParams, _save, cohort_colors)
+
+OUT = os.path.join("07_post", "figures")
+MUTS = ["MUT_CTNNB1", "MUT_AXIN1", "MUT_TP53", "TERT_promoter", "MUT_ARID1A", "MUT_ALB", "AMP_CCND1_FGF19",
+        "ARM_8p_loss", "ARM_1q_gain"]
+SIG_GROUPS = {
+    "HCC classes": ["HOSHIDA_LIVER_CANCER_SUBCLASS_S1", "HOSHIDA_LIVER_CANCER_SUBCLASS_S2",
+                    "HOSHIDA_LIVER_CANCER_SUBCLASS_S3", "BOYAULT_LIVER_CANCER_SUBCLASS_G1_UP",
+                    "BOYAULT_LIVER_CANCER_SUBCLASS_G2", "BOYAULT_LIVER_CANCER_SUBCLASS_G3_UP",
+                    "BOYAULT_LIVER_CANCER_SUBCLASS_G56_UP", "BOYAULT_LIVER_CANCER_SUBCLASS_G6_UP",
+                    "CHIANG_LIVER_CANCER_SUBCLASS_CTNNB1_UP", "CHIANG_LIVER_CANCER_SUBCLASS_PROLIFERATION_UP",
+                    "CHIANG_LIVER_CANCER_SUBCLASS_INTERFERON_UP", "CHIANG_LIVER_CANCER_SUBCLASS_POLYSOMY7_UP",
+                    "CHIANG_LIVER_CANCER_SUBCLASS_UNANNOTATED_UP",
+                    "DESERT_STEM_CELL_HEPATOCELLULAR_CARCINOMA_SUBCLASS_UP",
+                    "DESERT_EXTRACELLULAR_MATRIX_HEPATOCELLULAR_CARCINOMA_SUBCLASS_UP",
+                    "DESERT_PERIPORTAL_HEPATOCELLULAR_CARCINOMA_SUBCLASS_UP",
+                    "DESERT_PERIVENOUS_HEPATOCELLULAR_CARCINOMA_SUBCLASS_UP"],
+    "Progenitor": ["YAMASHITA_LIVER_CANCER_WITH_EPCAM_UP", "ANDERSEN_LIVER_CANCER_KRT19_UP",
+                   "VILLANUEVA_LIVER_CANCER_KRT19_UP", "YAMASHITA_LIVER_CANCER_STEM_CELL_UP"],
+    "Prognosis": ["HOSHIDA_LIVER_CANCER_SURVIVAL_UP", "HOSHIDA_LIVER_CANCER_SURVIVAL_DN",
+                  "HOSHIDA_LIVER_CANCER_LATE_RECURRENCE_UP", "KIM_LIVER_CANCER_POOR_SURVIVAL_UP",
+                  "LEE_LIVER_CANCER_SURVIVAL_UP", "LEE_LIVER_CANCER_SURVIVAL_DN",
+                  "WOO_LIVER_CANCER_RECURRENCE_UP", "KUROKAWA_LIVER_CANCER_EARLY_RECURRENCE_UP",
+                  "IIZUKA_LIVER_CANCER_EARLY_RECURRENCE", "MINGUEZ_LIVER_CANCER_VASCULAR_INVASION_UP"],
+    "Hallmarks": ["HALLMARK_E2F_TARGETS", "HALLMARK_G2M_CHECKPOINT", "HALLMARK_MYC_TARGETS_V1",
+                  "HALLMARK_MTORC1_SIGNALING", "HALLMARK_OXIDATIVE_PHOSPHORYLATION", "HALLMARK_GLYCOLYSIS",
+                  "HALLMARK_HYPOXIA", "HALLMARK_WNT_BETA_CATENIN_SIGNALING", "HALLMARK_TGF_BETA_SIGNALING",
+                  "HALLMARK_EPITHELIAL_MESENCHYMAL_TRANSITION", "HALLMARK_ANGIOGENESIS",
+                  "HALLMARK_INTERFERON_GAMMA_RESPONSE", "HALLMARK_INTERFERON_ALPHA_RESPONSE",
+                  "HALLMARK_INFLAMMATORY_RESPONSE", "HALLMARK_IL6_JAK_STAT3_SIGNALING",
+                  "HALLMARK_XENOBIOTIC_METABOLISM", "HALLMARK_BILE_ACID_METABOLISM",
+                  "HALLMARK_FATTY_ACID_METABOLISM", "HALLMARK_COAGULATION", "HALLMARK_P53_PATHWAY"],
+}
+
+
+def short(sig):
+    s = sig.replace("HALLMARK_", "H: ").replace("_LIVER_CANCER", "").replace("_HEPATOCELLULAR_CARCINOMA", "")
+    s = s.replace("_SUBCLASS", "").replace("LIVER_CANCER_", "").replace("_", " ")
+    return s.title().replace("H: ", "H: ").replace("Ctnnb1", "CTNNB1").replace("Epcam", "EPCAM") \
+        .replace("Krt19", "KRT19").replace("Myc", "MYC").replace("E2F", "E2F").replace("G2M", "G2M") \
+        .replace("Mtorc1", "mTORC1").replace("Tgf", "TGF").replace("Il6 Jak Stat3", "IL6-JAK-STAT3") \
+        .replace(" Up", " up").replace(" Dn", " dn").replace("Wnt Beta Catenin", "WNT/β-catenin")
+
+
+def load(P, matrix, log):
+    res = p(P["paths"]["results"])
+    sub = P["post"]["subtypes_dir"]
+    mdir = os.path.join(res, "04_miner", matrix, sub)
+    D = {}
+    D["samples"] = pd.read_csv(os.path.join(res, "01_harmonized", "samples.tsv"), sep="\t", index_col="sample")
+    E = pd.read_csv(os.path.join(mdir, "eigengenes.csv"), index_col=0)
+    E.index = E.index.astype(str)
+    over = pd.read_csv(os.path.join(mdir, "overExpressedMembers.csv"), index_col=0)
+    under = pd.read_csv(os.path.join(mdir, "underExpressedMembers.csv"), index_col=0)
+    over.index, under.index = over.index.astype(str), under.index.astype(str)
+    D["diff"] = over - under
+    D["programs"] = {k: [str(r) for r in v] for k, v in json.load(open(os.path.join(mdir, "transcriptional_programs.json"))).items()}
+    D["states"] = json.load(open(os.path.join(mdir, "transcriptional_states.json")))
+    Ez = E.sub(E.mean(1), axis=0)
+    D["act"] = pd.DataFrame({k: Ez.loc[[r for r in v if r in Ez.index]].mean() for k, v in D["programs"].items()}).T
+    rdir = os.path.join(res, "06_risk", matrix)
+    R = P["post"]["figures"]
+    pred = pd.read_csv(os.path.join(rdir, f"predictor_{R['risk_model']}", "predictions.tsv"), sep="\t", index_col=0)
+    D["risk"] = pred.groupby("cohort")["risk_score"].transform(lambda v: (v - v.mean()) / v.std())
+    D["weights"] = pd.read_csv(os.path.join(rdir, f"predictor_{R['risk_model']}", "weights.tsv"), sep="\t",
+                               index_col=0)["weight"]
+    D["weights"].index = D["weights"].index.astype(str)
+    ep = R["endpoint"]
+    for unit in ("programs", "states"):
+        t = pd.read_csv(os.path.join(rdir, f"prognostic_{unit}_h36m_{ep}.tsv"), sep="\t", index_col=0)
+        t.index = t.index.astype(str)
+        D[f"prog_{unit}"] = t
+    smap = os.path.join(res, "07_post", "subtype_mapping", sub)
+    D["cor"] = pd.read_csv(os.path.join(smap, "program_signature_correlation.tsv"), sep="\t", index_col=0)
+    D["cor"].index = D["cor"].index.astype(str)
+    ov = pd.read_csv(os.path.join(smap, "program_signature_overlap.tsv"), sep="\t")
+    ov["program"] = ov["program"].astype(str)
+    D["overlap"] = ov
+    D["ntp"] = {cl: pd.read_csv(os.path.join(smap, f"ntp_calls_{cl}.tsv"), sep="\t", index_col=0)["call"]
+                for cl in ("hoshida", "boyault", "chiang")}
+    fam = pd.read_csv(os.path.join(res, "05_causal", matrix, "regulon_families.tsv"), sep="\t", index_col=0)
+    fam["program"] = fam["program"].astype(str)
+    D["fam"] = fam
+    D["genomic"] = pd.read_csv(os.path.join(res, "03_genomics_clinical", "genomic_features.csv"), index_col=0)
+    log.info("Loaded %d programs, %d states, %d samples", len(D["programs"]), len(D["states"]), len(D["samples"]))
+    return D
+
+
+def known_scores(P, D, R):
+    """Per-sample scores of the known-subtype covariate signatures (mean z of their genes), each with the
+    sample's global mean z regressed out; plus the global mean itself."""
+    res = p(P["paths"]["results"])
+    z = pd.read_csv(os.path.join(res, "02_batch_corrected", f"expression_{P['miner']['matrix']}_z.csv"), index_col=0)
+    sig = pd.read_csv(os.path.join(res, "07_post", "signatures", "signatures.tsv"), sep="\t").dropna(subset=["ensembl"])
+    gm = z.mean(axis=0)
+    gc = gm - gm.mean()
+    out = {}
+    for s_ in R["adjust_signatures"]:
+        g = sorted(set(sig.loc[sig["set"] == s_, "ensembl"]) & set(z.index))
+        if len(g) < 5:
+            continue
+        v = z.loc[g].mean()
+        out[short(s_)] = v - gc * ((gc * (v - v.mean())).sum() / (gc ** 2).sum())
+    X = pd.DataFrame(out)
+    X["global mean z"] = gm
+    return X
+
+
+def cox_adjusted(values, surv, covars, R):
+    """Cox z of each row of `values` (units x samples) within each cohort, alone and adjusted for covars;
+    Stouffer meta-z over cohorts (weights sqrt(events)); BH; consistency."""
+    from lifelines import CoxPHFitter
+    zs = {"unadjusted": {}, "adjusted": {}}
+    w = {}
+    for c, srv in surv.items():
+        ids = srv.index.intersection(values.columns).intersection(covars.index)
+        srv = srv.loc[ids]
+        w[c] = np.sqrt(srv["observed"].sum())
+        cv = covars.loc[ids]
+        cv = (cv - cv.mean()) / cv.std()
+        for mode in zs:
+            col = {}
+            for k in values.index:
+                x = values.loc[k, ids].astype(float)
+                if x.std() == 0:
+                    col[k] = np.nan
+                    continue
+                d = srv.assign(x=(x - x.mean()) / x.std())
+                if mode == "adjusted":
+                    d = d.join(cv)
+                try:
+                    col[k] = CoxPHFitter(penalizer=0.0).fit(d, "duration", "observed").summary.loc["x", "z"]
+                except Exception:  # noqa: BLE001
+                    col[k] = np.nan
+            zs[mode][c] = pd.Series(col)
+    out = pd.DataFrame(index=values.index)
+    for mode, per in zs.items():
+        Z = pd.DataFrame(per)
+        ww = np.array([w[c] for c in Z.columns])
+        for c in Z.columns:
+            out[f"z_{mode}_{c}"] = Z[c]
+        meta = (Z.values * ww).sum(1) / np.sqrt((ww ** 2).sum())
+        out[f"meta_z_{mode}"] = meta
+        pv = 2 * stats.norm.sf(np.abs(meta))
+        out[f"meta_q_{mode}"] = _bh(pv)
+        out[f"consistent_{mode}"] = np.sign(Z.values).min(1) == np.sign(Z.values).max(1)
+    return out
+
+
+def _bh(pv):
+    pv = np.asarray(pv, float)
+    q = np.full_like(pv, np.nan)
+    ok = ~np.isnan(pv)
+    n = ok.sum()
+    o = np.argsort(pv[ok])
+    r = pv[ok][o] * n / (np.arange(n) + 1)
+    r = np.minimum.accumulate(r[::-1])[::-1]
+    qq = np.empty(n)
+    qq[o] = np.minimum(r, 1)
+    q[ok] = qq
+    return q
+
+
+def load_surv(P, R):
+    res = p(P["paths"]["results"])
+    out = {}
+    for c in ("TCGA", "CLCA"):
+        s_ = pd.read_csv(os.path.join(res, "03_genomics_clinical", f"survival_{c}_{R['endpoint']}_h36m_miner.csv"), index_col=0)
+        s_.columns = ["duration", "observed"]
+        out[c] = s_
+    return out
+
+
+def head_to_head(P, KS, R):
+    """Cross-cohort C-index of Cox models on known-subtype scores (trained in one cohort, applied to the
+    other) vs the step-06 MINER ridge program models; and the likelihood-ratio test of adding the MINER
+    score to the known scores within the test cohort."""
+    from lifelines import CoxPHFitter
+    from lifelines.utils import concordance_index
+    res = p(P["paths"]["results"])
+    surv = load_surv(P, R)
+    sets = {"Hoshida S1/S2/S3": ["Hoshida S1", "Hoshida S2", "Hoshida S3"],
+            "Chiang proliferation": ["Chiang Proliferation up"],
+            "all known scores + global mean": list(KS.columns)}
+    rows = []
+    for tr, te in (("TCGA", "CLCA"), ("CLCA", "TCGA")):
+        a, b = surv[tr], surv[te]
+        Xa, Xb = KS.loc[a.index], KS.loc[b.index]
+        for name, cols in sets.items():
+            mu, sd = Xa[cols].mean(), Xa[cols].std()
+            m = CoxPHFitter(penalizer=0.1).fit(a.join((Xa[cols] - mu) / sd), "duration", "observed")
+            sc = m.predict_partial_hazard((Xb[cols] - mu) / sd)
+            rows.append({"train": tr, "test": te, "model": name, "c_index": concordance_index(b["duration"], -sc, b["observed"])})
+        mp = pd.read_csv(os.path.join(res, "06_risk", P["miner"]["matrix"], f"predictor_ridge_programs_{tr}_{R['endpoint']}_h36m",
+                                      "predictions.tsv"), sep="\t", index_col=0)["risk_score"]
+        rows.append({"train": tr, "test": te, "model": "MINER programs (ridge)",
+                     "c_index": concordance_index(b["duration"], -mp[b.index], b["observed"])})
+        d = b.join((Xb - Xb.mean()) / Xb.std())
+        d["miner"] = (mp[b.index] - mp[b.index].mean()) / mp[b.index].std()
+        full = CoxPHFitter().fit(d, "duration", "observed")
+        red = CoxPHFitter().fit(d.drop(columns="miner"), "duration", "observed")
+        lr = 2 * (full.log_likelihood_ - red.log_likelihood_)
+        rows[-1].update(lr_added_to_known=lr, lr_p=stats.chi2.sf(lr, 1),
+                        hr_per_sd_given_known=full.summary.loc["miner", "exp(coef)"])
+    return pd.DataFrame(rows)
+
+
+def fig_beyond_known(prog, adj, risk_adj, h2h, outdir, R, written):
+    """Prognostic meta-z of each program before vs after adjusting for known-subtype scores."""
+    fig, (ax, ax2) = plt.subplots(1, 2, figsize=(13, 6.2), gridspec_kw={"width_ratios": [1.15, 1]})
+    lim = np.nanmax(np.abs(adj[["meta_z_unadjusted", "meta_z_adjusted"]].values)) * 1.08
+    new = (adj["meta_q_adjusted"] <= R["q_max"]) & adj["consistent_adjusted"]
+    ax.axhspan(-3, 3, color=Q.GRID, alpha=0.5, zorder=0)
+    ax.plot([-lim, lim], [-lim, lim], color=Q.MUTED, ls="--", lw=1)
+    ax.axhline(0, color=Q.AXIS, lw=0.8)
+    ax.axvline(0, color=Q.AXIS, lw=0.8)
+    ax.scatter(adj.loc[~new, "meta_z_unadjusted"], adj.loc[~new, "meta_z_adjusted"], s=18, color=Q.BACKGROUND,
+               edgecolor=Q.MUTED, linewidth=0.5, label="not prognostic after adjustment", zorder=2)
+    if new.any():
+        ax.scatter(adj.loc[new, "meta_z_unadjusted"], adj.loc[new, "meta_z_adjusted"], s=34,
+                   color=[Q.SLOTS[7] if v > 0 else Q.SLOTS[0] for v in adj.loc[new, "meta_z_adjusted"]],
+                   edgecolor=Q.SURFACE, linewidth=1,
+                   label="prognostic beyond known subtypes (meta q ≤ %.2f, same sign)" % R["q_max"], zorder=3)
+    for k in adj.index[new]:
+        ax.annotate(f"P{k}", (adj.loc[k, "meta_z_unadjusted"], adj.loc[k, "meta_z_adjusted"]), fontsize=7,
+                    xytext=(4, 3), textcoords="offset points", color=Q.INK)
+    ax.set_xlim(-lim, lim)
+    ax.set_ylim(-lim, lim)
+    ax.set_xlabel("prognostic meta-z, unadjusted (> 0 adverse)")
+    ax.set_ylabel("meta-z adjusted for known subtype scores + global mean")
+    ax.set_title(f"a. Programs: prognosis before vs after adjustment ({int(new.sum())} of {len(adj)} remain)",
+                 loc="left", fontsize=9.5)
+    import textwrap
+    txt = "; ".join(f"{c} HR/SD {r['hr']:.2f} (p={r['p']:.1e})" for c, r in risk_adj.iterrows())
+    ax.text(0.01, 0.01, "\n".join(textwrap.wrap("adjusted within cohort for: " + ", ".join(R["adjust_labels"]), 80))
+            + "\nMINER risk score, adjusted: " + txt, transform=ax.transAxes, fontsize=6.5, color=Q.INK2, va="bottom")
+    ax.legend(loc="upper left", fontsize=7)
+    # b. head-to-head C-index in the external cohort
+    order = ["Hoshida S1/S2/S3", "Chiang proliferation", "all known scores + global mean", "MINER programs (ridge)"]
+    y = np.arange(len(order))
+    for j, (tr, te) in enumerate((("TCGA", "CLCA"), ("CLCA", "TCGA"))):
+        h = h2h[(h2h["train"] == tr)].set_index("model").reindex(order)
+        ax2.barh(y + (j - 0.5) * 0.36, h["c_index"], height=0.34, color=Q.cohort_colors(["TCGA", "CLCA"])[te],
+                 label=f"trained in {tr}, tested in {te}")
+        for yi, v in zip(y + (j - 0.5) * 0.36, h["c_index"]):
+            ax2.text(v + 0.003, yi, f"{v:.3f}", va="center", fontsize=7, color=Q.INK2)
+    ax2.axvline(0.5, color=Q.AXIS, lw=0.8)
+    ax2.set_xlim(0.45, 0.70)
+    ax2.set_yticks(y)
+    ax2.set_yticklabels(order, fontsize=8)
+    ax2.invert_yaxis()
+    ax2.grid(axis="y", visible=False)
+    ax2.set_xlabel("C-index in the external cohort (RFS, 36 months)")
+    m = h2h[h2h["model"] == "MINER programs (ridge)"].set_index("test")
+    ax2.set_title("b. Known subtype models vs MINER, cross-cohort", loc="left", fontsize=9.5)
+    ax2.text(0.01, 0.01, "adding the MINER score to all known scores (LR test): " +
+             "; ".join(f"in {t} p={r['lr_p']:.2g}" for t, r in m.iterrows()), transform=ax2.transAxes,
+             fontsize=6.8, color=Q.INK2, va="bottom")
+    ax2.legend(loc="upper right", fontsize=7)
+    fig.tight_layout()
+    Q._save(fig, outdir, "f6_beyond_known_subtypes.png", written)
+
+
+def annotate_programs(D, R):
+    """Per program: weight, prognostic meta-z, top regulators, best signature by activity and by overlap,
+    known/new call."""
+    rows = []
+    ov = D["overlap"]
+    for k in D["programs"]:
+        o = ov[(ov["program"] == k) & (ov["fdr"] < 0.05) & (ov["fold_enrichment"] >= R["min_fold"])].sort_values("fdr")
+        c = D["cor"].loc[k]
+        pr = D["prog_programs"].loc[k]
+        regs = D["fam"].loc[D["fam"]["program"] == k, "regulator_symbol"].value_counts().index[:5]
+        rows.append({"program": k, "n_regulons": len(D["programs"][k]), "risk_weight": D["weights"].get(k, np.nan),
+                     "meta_z": pr["meta_z"], "meta_q": pr["meta_q"], "consistent": bool(pr["consistent"]),
+                     "top_regulators": ",".join(regs),
+                     "best_activity_signature": c.abs().idxmax(), "best_activity_r": c[c.abs().idxmax()],
+                     "best_overlap_signature": o["signature"].iloc[0] if len(o) else "",
+                     "best_overlap_fold": o["fold_enrichment"].iloc[0] if len(o) else np.nan,
+                     "best_overlap_neglog10_fdr": -np.log10(o["fdr"].iloc[0]) if len(o) else 0.0})
+    t = pd.DataFrame(rows).set_index("program")
+    t["prognostic"] = (t["meta_q"] <= R["q_max"]) & t["consistent"]
+    t["known"] = (t["best_overlap_signature"] != "") | (t["best_activity_r"].abs() >= R["known_r"])
+    t["class"] = np.select([t["prognostic"] & ~t["known"], t["prognostic"], t["known"]],
+                           ["prognostic, new", "prognostic, known", "known, not prognostic"], "other")
+    return t
+
+
+def state_table(D):
+    S = D["samples"]
+    rows = []
+    for k, v in D["states"].items():
+        v = [s for s in v if s in S.index]
+        r = {"state": k, "n": len(v), "risk_mean_z": D["risk"].reindex(v).mean()}
+        for c in ("TCGA", "CLCA", "LICA_FR"):
+            r[f"frac_{c}"] = (S.loc[v, "cohort"] == c).mean()
+        rows.append(r)
+    t = pd.DataFrame(rows).set_index("state")
+    ps = D["prog_states"]
+    t["meta_z"] = ps["meta_z"].reindex(t.index)
+    t["meta_q"] = ps["meta_q"].reindex(t.index)
+    return t
+
+
+def frac_table(states, labels, levels):
+    out = pd.DataFrame(index=levels, columns=list(states), dtype=float)
+    for k, v in states.items():
+        x = labels.reindex(v).dropna()
+        x = x[x != "unassigned"]
+        for lv in levels:
+            out.loc[lv, k] = (x == lv).mean() if len(x) else np.nan
+    return out
+
+
+def fig_integrated(D, prog, st, outdir, R, written):
+    s_order = st.sort_values("risk_mean_z").index.tolist()
+    p_order = prog.sort_values("risk_weight").index.tolist()
+    diff = D["diff"]
+    M = pd.DataFrame({s: [diff.loc[D["programs"][k], [x for x in D["states"][s] if x in diff.columns]].values.mean()
+                          for k in p_order] for s in s_order}, index=p_order)
+    S = D["samples"]
+    tracks = []   # (title, DataFrame levels x states, vmax)
+    tracks.append(("Cohort", pd.DataFrame({s: [st.loc[s, f"frac_{c}"] for c in ("TCGA", "CLCA", "LICA_FR")]
+                                           for s in s_order}, index=["TCGA", "CLCA", "LICA-FR"])))
+    for cl, lv in (("hoshida", ["S1", "S2", "S3"]), ("boyault", ["G1", "G2", "G3", "G5", "G6"]),
+                   ("chiang", ["CTNNB1", "proliferation", "interferon", "polysomy7", "unannotated"])):
+        tracks.append((f"{cl.title()} (NTP)", frac_table(D["states"], D["ntp"][cl], lv)[s_order]))
+    tracks.append(("Boyault (LICA-FR authors)", frac_table(D["states"], S["boyault"], ["G1", "G2", "G3", "G4", "G5", "G6"])[s_order]))
+    G = D["genomic"]
+    mut = pd.DataFrame({s: [G.loc[m, [x for x in D["states"][s] if x in G.columns]].mean() for m in MUTS]
+                        for s in s_order}, index=[m.replace("MUT_", "").replace("_", " ") for m in MUTS])
+    tracks.append(("Alteration frequency", mut))
+
+    h_rows = [2.2, 2.2] + [len(t[1]) for t in tracks] + [len(M)]
+    cell = 0.15
+    ncol = len(s_order)
+    fig = plt.figure(figsize=(2.6 + 0.30 * ncol + 5.6, 2.0 + cell * (sum(h_rows) + 1.2 * len(h_rows))))
+    gs = gridspec.GridSpec(len(h_rows) + 1, 3, height_ratios=h_rows + [3.0],
+                           width_ratios=[2.6, 0.30 * ncol, 5.6], hspace=0.28, wspace=0.02)
+    x = np.arange(ncol)
+
+    def track_title(row, label):
+        # titles sit at the left edge of column 0; the heatmap tick labels occupy its right edge
+        axt = fig.add_subplot(gs[row, 0])
+        axt.axis("off")
+        axt.text(0.0, 0.5, label, ha="left", va="center", fontsize=7.5, color=Q.INK2, transform=axt.transAxes)
+
+    def strip_axis(ax, row, label):
+        ax.set_xlim(-0.5, ncol - 0.5)
+        ax.set_xticks([])
+        track_title(row, label)
+
+    ax = fig.add_subplot(gs[0, 1])
+    ax.bar(x, st.loc[s_order, "n"], color=Q.MUTED, width=0.7)
+    strip_axis(ax, 0, "samples per state")
+    ax.tick_params(axis="y", labelsize=6)
+    ax.set_title("MINER programs × states — states ordered by mean risk score (low → high), "
+                 "programs by risk-model weight (protective → adverse)", loc="left", fontsize=9.5)
+    ax = fig.add_subplot(gs[1, 1])
+    rz = st.loc[s_order, "risk_mean_z"]
+    ax.bar(x, rz, color=[Q.SLOTS[7] if v > 0 else Q.SLOTS[0] for v in rz], width=0.7)
+    ax.axhline(0, color=Q.AXIS, lw=0.8)
+    strip_axis(ax, 1, "mean risk score (z)")
+    ax.tick_params(axis="y", labelsize=6)
+    for i, (title, T) in enumerate(tracks):
+        ax = fig.add_subplot(gs[2 + i, 1])
+        ax.imshow(T.values.astype(float), aspect="auto", cmap=Q.SEQ, vmin=0, vmax=1, interpolation="none")
+        ax.set_yticks(range(len(T)))
+        ax.set_yticklabels(T.index, fontsize=6.5)
+        ax.set_xticks([])
+        ax.grid(False)
+        track_title(2 + i, title)
+    # main heatmap
+    ax = fig.add_subplot(gs[len(h_rows) - 1, 1])
+    vmax = np.nanpercentile(np.abs(M.values), 98)
+    im = ax.imshow(M.values, aspect="auto", cmap=Q.DIV, vmin=-vmax, vmax=vmax, interpolation="none")
+    ax.set_xticks(x)
+    ax.set_xticklabels([f"S{s}" for s in s_order], fontsize=6.5, rotation=90)
+    ax.set_yticks([])
+    ax.grid(False)
+    ax.set_xlabel("")
+    # left: weight + meta z (adverse to the right)
+    axl = fig.add_subplot(gs[len(h_rows) - 1, 0], sharey=ax)
+    y = np.arange(len(p_order))
+    w = prog.loc[p_order, "risk_weight"] / prog["risk_weight"].abs().max()
+    mz = prog.loc[p_order, "meta_z"] / prog["meta_z"].abs().max()
+    axl.barh(y - 0.2, w, height=0.4, color=[Q.SLOTS[7] if v > 0 else Q.SLOTS[0] for v in w])
+    axl.barh(y + 0.2, mz, height=0.4, color=Q.BACKGROUND)
+    axl.axvline(0, color=Q.AXIS, lw=0.8)
+    axl.set_xlim(-1.1, 1.1)
+    axl.set_xticks([-1, 0, 1])
+    axl.set_xticklabels(["protective", "0", "adverse"], fontsize=6.5)
+    axl.set_yticks(y)
+    axl.set_yticklabels([f"P{k}" for k in p_order], fontsize=5.8)
+    axl.grid(False)
+    axl.set_xlabel("colored: risk-model weight\ngray: prognostic meta-z (RFS)\n(each scaled to max |value|)",
+                   fontsize=6.5)
+    # right: labels
+    axr = fig.add_subplot(gs[len(h_rows) - 1, 2], sharey=ax)
+    axr.axis("off")
+    for i, k in enumerate(p_order):
+        r = prog.loc[k]
+        sig = short(r["best_overlap_signature"]) if r["best_overlap_signature"] else short(r["best_activity_signature"])
+        mark = {"prognostic, new": "★", "prognostic, known": "•"}.get(r["class"], " ")
+        axr.text(0.01, i, f"{mark} P{k:<3} {r['top_regulators'][:32]:<32} {sig[:46]}", fontsize=5.6, va="center",
+                 family="monospace", color=Q.INK if r["prognostic"] else Q.MUTED)
+    axr.text(0.01, -1.6, "  prog top regulators                    best known signature", fontsize=6.2,
+             family="monospace", color=Q.INK2, va="bottom")
+    # legends / colorbars in the bottom row
+    axc = fig.add_subplot(gs[-1, 1])
+    axc.axis("off")
+    cax = axc.inset_axes([0.0, 0.25, 0.45, 0.22])
+    cb = fig.colorbar(im, cax=cax, orientation="horizontal")
+    cb.set_label("mean regulon dysregulation (over − under)", fontsize=7)
+    cb.ax.tick_params(labelsize=6)
+    cax2 = axc.inset_axes([0.55, 0.25, 0.45, 0.22])
+    cb2 = fig.colorbar(plt.cm.ScalarMappable(cmap=Q.SEQ, norm=plt.Normalize(0, 1)), cax=cax2, orientation="horizontal")
+    cb2.set_label("fraction of state (tracks above)", fontsize=7)
+    cb2.ax.tick_params(labelsize=6)
+    axn = fig.add_subplot(gs[-1, 2])
+    axn.axis("off")
+    axn.text(0.01, 0.8, "★ prognostic, not explained by known signatures\n• prognostic (meta q ≤ %.2f, same sign "
+             "in TCGA and CLCA), known\nblack = prognostic; gray = not prognostic" % R["q_max"],
+             fontsize=6.8, va="top", color=Q.INK2)
+    Q._save(fig, outdir, "f1_integrated_map.png", written)
+    return M
+
+
+def fig_known_new(prog, outdir, R, written):
+    fig, ax = plt.subplots(figsize=(7.2, 5.6))
+    lim = max(3, np.nanmax(prog["meta_z"].abs()))
+    sc = ax.scatter(prog["best_activity_r"].abs(), prog["best_overlap_neglog10_fdr"].clip(upper=60),
+                    c=prog["meta_z"], cmap=Q.DIV, vmin=-lim, vmax=lim, s=12 + 1.2 * prog["n_regulons"],
+                    edgecolor=Q.SURFACE, linewidth=1, zorder=3)
+    ax.axvline(R["known_r"], color=Q.MUTED, ls="--", lw=1)
+    ax.axhline(-np.log10(0.05), color=Q.MUTED, ls="--", lw=1)
+    ax.text(0.02, 0.97, "lower left: no gene overlap and |r| < %.1f (not matched by known signatures)" % R["known_r"],
+            transform=ax.transAxes, fontsize=7.5,
+            color=Q.INK2, va="top")
+    lab = prog[prog["prognostic"] & ((prog["class"] == "prognostic, new") | (prog["meta_z"].abs() >= 4.5))]
+    lab = lab.assign(x=lab["best_activity_r"].abs()).sort_values("x")
+    for i, (k, r) in enumerate(lab.iterrows()):
+        dy = [10, -12, 22, -24][i % 4] if r["best_overlap_neglog10_fdr"] == 0 else 4
+        ax.annotate(f"P{k}", (abs(r["best_activity_r"]), min(r["best_overlap_neglog10_fdr"], 60)), fontsize=7,
+                    xytext=(3, dy), textcoords="offset points", color=Q.INK,
+                    arrowprops=dict(arrowstyle="-", color=Q.MUTED, lw=0.5) if dy != 4 else None)
+    ax.set_xlabel("best activity correlation with a known signature (|r|, per-sample global mean regressed out)")
+    ax.set_ylabel("best gene-set overlap, −log10 FDR (capped at 60)")
+    ax.set_title("Programs: similarity to known signatures (size = regulons, colour = prognostic meta-z, RFS)\n"
+                 "similarity only; for prognosis beyond known subtypes see f6", fontsize=9.5)
+    cb = fig.colorbar(sc, ax=ax, fraction=0.04)
+    cb.set_label("meta-z (> 0 adverse)")
+    fig.tight_layout()
+    Q._save(fig, outdir, "f2_known_vs_new.png", written)
+
+
+def fig_risk_by_subtype(D, outdir, written):
+    S = D["samples"]
+    risk = D["risk"]
+    panels = [("Hoshida (NTP)", D["ntp"]["hoshida"], ["S1", "S2", "S3"]),
+              ("Boyault (NTP)", D["ntp"]["boyault"], ["G1", "G2", "G3", "G5", "G6"]),
+              ("Chiang (NTP)", D["ntp"]["chiang"], ["proliferation", "polysomy7", "interferon", "unannotated", "CTNNB1"]),
+              ("Boyault (LICA-FR authors)", S["boyault"], ["G1", "G2", "G3", "G4", "G5", "G6"]),
+              ("Molecular group (LICA-FR authors)", S["molecular_group"], None),
+              ("Immune class (LICA-FR authors)", S["immune_class"], ["hot", "cold"])]
+    colors = Q.cohort_colors(["TCGA", "CLCA", "LICA_FR"])
+    fig, axes = plt.subplots(2, 3, figsize=(15, 8.2))
+    rng = np.random.default_rng(0)
+    for ax, (title, lab, levels) in zip(axes.ravel(), panels):
+        lab = lab.reindex(risk.index)
+        if levels is None:
+            med = risk.groupby(lab).median().sort_values()
+            levels = [lv for lv in med.index if (lab == lv).sum() >= 5]
+        groups = [risk[lab == lv].dropna() for lv in levels]
+        for i, g in enumerate(groups):
+            xs = i + rng.uniform(-0.28, 0.28, len(g))
+            ax.scatter(xs, g, s=8, color=[colors.get(S.loc[s, "cohort"], Q.MUTED) for s in g.index], alpha=0.7,
+                       linewidth=0, zorder=2)
+            if len(g):
+                ax.plot([i - 0.34, i + 0.34], [g.median()] * 2, color=Q.INK, lw=2, zorder=3)
+        ok = [g for g in groups if len(g) >= 3]
+        pk = stats.kruskal(*ok).pvalue if len(ok) >= 2 else np.nan
+        ax.set_xticks(range(len(levels)))
+        ax.set_xticklabels([f"{lv}\n(n={len(g)})" for lv, g in zip(levels, groups)], fontsize=6.5,
+                           rotation=30 if len(levels) > 6 else 0)
+        ax.axhline(0, color=Q.AXIS, lw=0.8)
+        ax.set_title(f"{title}   Kruskal p = {pk:.1e}", fontsize=9)
+        ax.set_ylabel("risk score (within-cohort z)")
+        ax.grid(axis="x", visible=False)
+    handles = [plt.Line2D([], [], marker="o", ls="", color=colors[c], label=c) for c in ("TCGA", "CLCA", "LICA_FR")]
+    handles.append(plt.Line2D([], [], color=Q.INK, lw=2, label="median"))
+    fig.legend(handles=handles, loc="upper right", ncol=4, fontsize=8)
+    fig.suptitle("Program-based risk score across published HCC subtypes (model trained in TCGA, RFS)", x=0.01,
+                 ha="left", fontsize=11, fontweight="bold")
+    fig.tight_layout(rect=(0, 0, 1, 0.95))
+    Q._save(fig, outdir, "f3_risk_by_subtype.png", written)
+
+
+def fig_program_signatures(D, prog, outdir, R, written):
+    p_order = prog.sort_values("risk_weight").index.tolist()
+    cols, groups = [], []
+    for g, sigs in SIG_GROUPS.items():
+        sigs = [s for s in sigs if s in D["cor"].columns]
+        cols += sigs
+        groups += [g] * len(sigs)
+    C = D["cor"].loc[p_order, cols]
+    ov = D["overlap"]
+    hit = ov[(ov["fdr"] < 0.05) & (ov["fold_enrichment"] >= R["min_fold"])]
+    hit = set(zip(hit["program"], hit["signature"]))
+    fig, ax = plt.subplots(figsize=(3 + 0.2 * len(cols), 2.5 + 0.15 * len(p_order)))
+    im = ax.imshow(C.values, aspect="auto", cmap=Q.DIV, vmin=-1, vmax=1, interpolation="none")
+    for i, k in enumerate(p_order):
+        for j, s in enumerate(cols):
+            if (k, s) in hit:
+                ax.scatter(j, i, s=6, color=Q.INK, zorder=3)
+    ax.set_yticks(range(len(p_order)))
+    ax.set_yticklabels([f"P{k}{' ★' if prog.loc[k, 'class'] == 'prognostic, new' else ''}" for k in p_order], fontsize=6)
+    ax.set_xticks(range(len(cols)))
+    ax.set_xticklabels([short(s) for s in cols], fontsize=6, rotation=90)
+    b = 0
+    for g in SIG_GROUPS:
+        n = groups.count(g)
+        if n:
+            ax.axvline(b - 0.5, color=Q.SURFACE, lw=2)
+            ax.text(b + n / 2 - 0.5, -1.2, g, ha="center", va="bottom", fontsize=7.5, color=Q.INK2)
+            b += n
+    ax.grid(False)
+    ax.set_title("Program activity vs known signatures (r); dot = gene overlap FDR < 0.05, ≥ %d-fold;"
+                 " programs ordered by risk weight (protective top)" % R["min_fold"], fontsize=8.5, pad=18)
+    cb = fig.colorbar(im, ax=ax, fraction=0.02, pad=0.01)
+    cb.set_label("Pearson r across samples")
+    fig.tight_layout()
+    Q._save(fig, outdir, "f4_program_signatures.png", written)
+
+
+def fig_state_risk(D, st, outdir, written):
+    ps = D["prog_states"].copy()
+    ps = ps.loc[st.index]
+    order = ps.sort_values("meta_z").index
+    zc = [c for c in ps.columns if c.startswith("z_")]
+    colors = Q.cohort_colors([c[2:] for c in zc])
+    lab = {}
+    for k in order:
+        v = D["states"][k]
+        parts = []
+        for cl in ("hoshida", "boyault", "chiang"):
+            c = D["ntp"][cl].reindex(v)
+            c = c[c != "unassigned"].dropna()
+            if len(c):
+                top = c.value_counts()
+                parts.append(f"{top.index[0]} {top.iloc[0] / len(c):.0%}")
+        dom = max(("TCGA", "CLCA", "LICA_FR"), key=lambda c: st.loc[k, f"frac_{c}"])
+        lab[k] = f"S{k} (n={st.loc[k, 'n']}; {dom} {st.loc[k, f'frac_{dom}']:.0%})  " + " · ".join(parts)
+    fig, ax = plt.subplots(figsize=(8.8, 0.6 + 0.24 * len(order)))
+    y = np.arange(len(order))
+    for j, c in enumerate(zc):
+        ax.scatter(ps.loc[order, c], y + (j - (len(zc) - 1) / 2) * 0.22, s=16, color=colors[c[2:]], label=c[2:],
+                   zorder=3)
+    sig = (ps.loc[order, "meta_q"] <= 0.1) & ps.loc[order, "consistent"]
+    ax.scatter(ps.loc[order, "meta_z"], y, marker="|", s=140, color=Q.INK, label="meta-z", zorder=4)
+    ax.axvline(0, color=Q.AXIS, lw=0.8)
+    ax.set_yticks(y)
+    ax.set_yticklabels([("★ " if s else "") + lab[k] for k, s in zip(order, sig)], fontsize=6.5)
+    ax.set_ylim(-0.7, len(order) - 0.3)
+    ax.grid(axis="y", visible=False)
+    ax.set_xlabel("Cox z for state membership (> 0: worse RFS); ★ meta q ≤ 0.1, same sign in both cohorts")
+    ax.legend(loc="lower right", fontsize=7)
+    ax.set_title("State-level risk (RFS, 36 months) with dominant NTP subtype calls", loc="left")
+    fig.tight_layout()
+    Q._save(fig, outdir, "f5_state_risk.png", written)
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--params", default=None)
+    ap.add_argument("--matrix", default=None)
+    args = ap.parse_args()
+    P = load_params(args.params)
+    matrix = args.matrix or P["miner"]["matrix"]
+    R = P["post"]["figures"]
+    outdir = p(os.path.join(P["paths"]["results"], OUT))
+    log = setup_logging(outdir, "07c_figures")
+    D = load(P, matrix, log)
+    prog = annotate_programs(D, R)
+    st = state_table(D)
+    prog.to_csv(os.path.join(outdir, "program_annotation.tsv"), sep="\t", float_format="%.4g")
+    st.to_csv(os.path.join(outdir, "state_annotation_risk.tsv"), sep="\t", float_format="%.4g")
+    log.info("Program classes: %s", prog["class"].value_counts().to_dict())
+    log.info("Prognostic programs not explained by known signatures:\n%s",
+             prog[prog["class"] == "prognostic, new"][["n_regulons", "risk_weight", "meta_z", "top_regulators",
+                                                        "best_activity_signature", "best_activity_r"]].to_string())
+    # prognostic value beyond known subtypes
+    KS = known_scores(P, D, R)
+    R["adjust_labels"] = list(KS.columns)
+    surv = load_surv(P, R)
+    adj = cox_adjusted(D["act"], surv, KS, R)
+    adj.index.name = "program"
+    adj.to_csv(os.path.join(outdir, "program_prognosis_beyond_known.tsv"), sep="\t", float_format="%.4g")
+    from lifelines import CoxPHFitter
+    rows = {}
+    for c, srv in surv.items():
+        ids = srv.index.intersection(KS.index)
+        cv = KS.loc[ids]
+        cv = (cv - cv.mean()) / cv.std()
+        rk = D["risk"].reindex(ids)
+        d = srv.loc[ids].assign(x=(rk - rk.mean()) / rk.std()).join(cv)
+        r_ = CoxPHFitter().fit(d, "duration", "observed").summary.loc["x"]
+        rows[c] = {"hr": r_["exp(coef)"], "lo": r_["exp(coef) lower 95%"], "hi": r_["exp(coef) upper 95%"], "p": r_["p"],
+                   "in_sample": c == R["risk_model"].split("_")[2]}
+    risk_adj = pd.DataFrame(rows).T
+    risk_adj.to_csv(os.path.join(outdir, "risk_score_beyond_known.tsv"), sep="\t", float_format="%.4g")
+    new = adj[(adj["meta_q_adjusted"] <= R["q_max"]) & adj["consistent_adjusted"]]
+    prog = prog.join(adj[["meta_z_adjusted", "meta_q_adjusted", "consistent_adjusted"]])
+    prog["beyond_known"] = prog.index.isin(new.index)
+    prog.to_csv(os.path.join(outdir, "program_annotation.tsv"), sep="\t", float_format="%.4g")
+    log.info("Adjusting for: %s", R["adjust_labels"])
+    log.info("Programs prognostic unadjusted: %d; still prognostic after adjustment: %d -> %s",
+             int(((adj["meta_q_unadjusted"] <= R["q_max"]) & adj["consistent_unadjusted"]).sum()), len(new),
+             prog.loc[prog["beyond_known"], ["meta_z", "meta_z_adjusted", "top_regulators", "best_activity_signature",
+                                             "best_activity_r"]].to_string())
+    log.info("Risk score adjusted for known subtype scores:\n%s", risk_adj.to_string())
+    h2h = head_to_head(P, KS, R)
+    h2h.to_csv(os.path.join(outdir, "risk_head_to_head.tsv"), sep="\t", index=False, float_format="%.4g")
+    log.info("Head-to-head (external C-index):\n%s", h2h.to_string(index=False, float_format=lambda v: f"{v:.3f}"))
+    written = []
+    fig_beyond_known(prog, adj, risk_adj, h2h, outdir, R, written)
+    fig_integrated(D, prog, st, outdir, R, written)
+    fig_known_new(prog, outdir, R, written)
+    fig_risk_by_subtype(D, outdir, written)
+    fig_program_signatures(D, prog, outdir, R, written)
+    fig_state_risk(D, st, outdir, written)
+    log.info("Figures: %s", ", ".join(written))
+
+
+if __name__ == "__main__":
+    main()

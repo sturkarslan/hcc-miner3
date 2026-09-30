@@ -139,6 +139,17 @@ post:
     fdr: 0.05
     seed: 1
     center: all                # all = the step-02 z-score across samples; cohort = re-centre within cohort
+  figures:                     # step 07c
+    risk_model: ridge_programs_TCGA_RFS_h36m   # step-06 predictor whose score and weights are shown
+    endpoint: RFS
+    q_max: 0.1                 # prognostic program/state: meta q <= this and same sign in both cohorts
+    known_r: 0.8               # "known": |activity r| with a signature >= this, or a direct gene overlap
+    min_fold: 3                # direct gene overlap: FDR < 0.05 and fold enrichment >= this
+    # f6: known-subtype covariates (signature scores, global mean regressed out; the global mean is added too)
+    adjust_signatures: [HOSHIDA_LIVER_CANCER_SUBCLASS_S1, HOSHIDA_LIVER_CANCER_SUBCLASS_S2,
+                        HOSHIDA_LIVER_CANCER_SUBCLASS_S3, CHIANG_LIVER_CANCER_SUBCLASS_PROLIFERATION_UP,
+                        CHIANG_LIVER_CANCER_SUBCLASS_CTNNB1_UP, VILLANUEVA_LIVER_CANCER_KRT19_UP,
+                        DESERT_STEM_CELL_HEPATOCELLULAR_CARCINOMA_SUBCLASS_UP]
 
 # ---------------------------------------------------------------- step 03b (genomic features for causal inference)
 genomics:

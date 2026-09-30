@@ -10,7 +10,9 @@
 3. Programs and regulons (gene sets): hypergeometric overlap with every library signature
    (background = genes in MINER coexpression modules); BH over all tests.
 4. Program activity vs signature score: Pearson r across samples between program activity (mean
-   regulon eigengene) and signature score (mean z of its genes).
+   regulon eigengene) and signature score (mean z of its genes), after regressing each sample's mean z
+   over all genes out of both (a per-sample level that otherwise correlates everything with everything);
+   the unadjusted matrix is kept as program_signature_correlation_raw.tsv.
 
 MINER IDs are mapped back to project Ensembl IDs (hcc_common.miner_id_backmap).
 Inputs: results/04_miner/<matrix>/{<post.subtypes_dir>,mechinf}/, results/02_batch_corrected/,
@@ -229,10 +231,26 @@ def main():
     act = pd.DataFrame({k: eig.loc[[str(r) for r in v if str(r) in eig.index]].mean() for k, v in programs.items()})
     act = act.reindex(z.columns)
     score = pd.DataFrame({s: z.loc[sorted(g & set(z.index))].mean() for s, g in sigs.items() if len(g) >= mg})
-    cor = pd.DataFrame(np.corrcoef(act.T.values, score.T.values)[:act.shape[1], act.shape[1]:],
-                       index=act.columns, columns=score.columns)
-    cor.index.name = "program"
+
+    def corr(a, b):
+        return pd.DataFrame(np.corrcoef(a.T.values, b.T.values)[:a.shape[1], a.shape[1]:], index=a.columns,
+                            columns=b.columns).rename_axis("program")
+
+    corr(act, score).to_csv(os.path.join(outdir, "program_signature_correlation_raw.tsv"), sep="\t", float_format="%.3f")
+    # Each sample's mean z over all genes drives most program activities (median r 0.62) and signature
+    # scores (median r 0.71), and tracks genes detected per sample (r 0.68; PROJECT_LOG). Regress it out of
+    # both before correlating, so r reflects shared biology rather than the per-sample level.
+    gm = z.mean(axis=0).reindex(act.index)
+    gc = (gm - gm.mean()).values[:, None]
+
+    def resid(X):
+        X = X.loc[gm.index]
+        return X - gc @ ((gc * (X - X.mean()).values).sum(0, keepdims=True) / (gc ** 2).sum())
+
+    cor = corr(resid(act), resid(score))
     cor.to_csv(os.path.join(outdir, "program_signature_correlation.tsv"), sep="\t", float_format="%.3f")
+    log.info("Program x signature r: raw median %.2f; global-mean-adjusted median %.2f, median best |r| %.2f",
+             np.median(corr(act, score).values), np.median(cor.values), cor.abs().max(1).median())
 
     import qc_plots
     written = qc_plots.subtype_report(outdir, enr, ari, pt, cor, calls, samples, label_cols, states)
