@@ -33,6 +33,10 @@ Keep entries short: date, what, why.
 
 ## Decisions
 
+- **[2026-09-30] Step 09: publication figures** (`scripts/09_publication_figures.py`, `results/09_figures/figure{1,2}.{pdf,png}` + source-data xlsx; legends and panel→source table in `docs/figure_legends.md`). Nature double column (183 mm × ~240 mm), Liberation Sans (Arial-metric) embedded as TrueType, built from saved results only.
+  - User choices: two figures; CTNNB1 as the featured causal flow; Nature format; leave-one-cohort-out as a placeholder panel (2h) until run; published classes and signatures labelled by biology, not study name.
+  - Program names are curated in `config/program_labels.tsv`, each with its evidence (best signature and r, top regulators); programs with weak evidence get regulator-based names. Biology blocks (proliferation/progenitor 9, differentiated/WNT 24, immune/stromal 18, other 25) = anchor-signature group with the highest mean activity r (≥ 0.3).
+  - External KM panels use the pre-specified TCGA-trained model for every cohort, not the better-performing model per cohort, to match the forest plot (GSE76427 RFS: TCGA-trained C 0.57, top 20% HR 2.08, P 0.04).
 - **[2026-09-30] Step 08 (external validation): GSE14520, LIRI-JP, GSE76427** (`scripts/08_external_validation.py`, hcc-prep env; `results/08_validation/`).
   - **Scoring is portable, with no refitting:** regulon score = mean z of its genes (z within cohort), program activity = mean regulon score, step-06 ridge weights applied to program activities standardized within the cohort. On discovery data this reproduces the MINER eigengene regulons (median r 0.999), program activities (median r 1.000, min 0.985) and the risk score (r 1.000 TCGA / LICA-FR, 0.997 CLCA).
   - **GSE14520** (LCI, GPL3921, from GEO: series matrix + `GSE14520_Extra_Supplement` + GPL3921 annotation; 225 tumours with expression, 221 with follow-up; HBV-dominant, resected; one probe per symbol by highest mean). 75% of network genes present; 3,932 / 4,108 regulons and 76 / 76 programs scored (median regulon gene coverage 80%).
