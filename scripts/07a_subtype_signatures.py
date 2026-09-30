@@ -138,9 +138,9 @@ def main():
                     if not any(re.search(pat, n) for n in allsets):
                         log.warning("classifier %s class %s %s: pattern %r matched no set", cl, cls, d, pat)
                 entry[d] = names
-            if entry.get("up"):
+            if entry.get("up") or entry.get("dn"):   # a class may be defined by DN genes only
                 resolved[cls] = entry
-                used |= set(entry["up"]) | set(entry.get("dn", []))
+                used |= set(entry.get("up", [])) | set(entry.get("dn", []))
         if len(resolved) >= 2:
             classifiers[cl] = resolved
             log.info("classifier %s: classes %s", cl, list(resolved))
@@ -177,9 +177,9 @@ def main():
     log.info("Mapping: %s", sig["mapped_via"].value_counts().to_dict())
 
     by_set = sig[sig["in_expression"]].groupby("set")["ensembl"].apply(lambda x: sorted(set(x)))
-    out = {cl: {cls: {"up": sorted({g for n in e["up"] for g in by_set.get(n, [])}),
+    out = {cl: {cls: {"up": sorted({g for n in e.get("up", []) for g in by_set.get(n, [])}),
                       "dn": sorted({g for n in e.get("dn", []) for g in by_set.get(n, [])}),
-                      "sets": e["up"] + e.get("dn", [])}
+                      "sets": e.get("up", []) + e.get("dn", [])}
                 for cls, e in classes.items()} for cl, classes in classifiers.items()}
     for cl, classes in out.items():
         log.info("classifier %s template genes: %s", cl,
