@@ -730,23 +730,48 @@ def f2g_benchmark(ax, D):
     ax.invert_yaxis()
     ax.set_xlim(0.42, 0.78)
     ax.set_xlabel("C-index")
-    ax.legend(loc="lower right", fontsize=4.4, handletextpad=0.2)
+    ax.legend(loc="lower left", bbox_to_anchor=(0.0, 1.0), ncol=2, fontsize=4.4, handletextpad=0.2, columnspacing=0.8,
+              borderaxespad=0.2)
     despine(ax)
     lr = H[(H["model"] == "MINER programs") & H["lr_p"].notna()]
-    ax.set_title(f"vs known signatures (MINER added: P ≥ {lr['lr_p'].min():.2f})")
+    ax.set_title(f"vs known signatures (MINER added: P ≥ {lr['lr_p'].min():.2f})", pad=17)
     return H
 
 
-def f2h_loco(ax):
-    ax.set_xlim(0, 1)
-    ax.set_ylim(0, 1)
-    ax.axis("off")
-    ax.add_patch(FancyBboxPatch((0.02, 0.04), 0.96, 0.9, boxstyle="round,pad=0.01,rounding_size=0.03", fc="#f4f4f2",
-                                ec=Q.MUTED, lw=0.6, ls=(0, (3, 2))))
-    ax.text(0.5, 0.64, "Leave-one-\ncohort-out\nnetwork\nstability", ha="center", va="center", fontsize=5.2, fontweight="bold",
-            color=Q.INK2)
-    ax.text(0.5, 0.3, "PLACEHOLDER\n(pending)\n\nregulon / program\nrecovery and\ncausal-flow\nreproducibility,\n"
-            "one cohort\nheld out", ha="center", va="center", fontsize=4.5, color=Q.MUTED)
+def f2h_loco(ax, D):
+    """Leave-one-cohort-out stability (step 08b); placeholder if not run yet."""
+    f = os.path.join(D["res"], "08_validation", "loco", "loco_summary.tsv")
+    if not os.path.exists(f):
+        ax.axis("off")
+        ax.text(0.5, 0.5, "Leave-one-cohort-out\n(pending)", ha="center", va="center", fontsize=5.5, color=Q.MUTED)
+        return None
+    S = pd.read_csv(f, sep="\t").set_index("held_out")
+    mets = [("regulators_recovered", "regulators\nrecovered"),
+            ("program_median_activity_r", "program\nactivity r"),
+            ("risk_programs_median_activity_r", "risk-program\nactivity r"),
+            ("causal_MUT_CTNNB1_recovered_filtered", "CTNNB1\nedges"),
+            ("causal_edges_recovered_filtered", "all causal\nedges")]
+    x = np.arange(len(mets))
+    hs = [h for h in ("TCGA", "CLCA", "LICA_FR") if h in S.index]
+    for j, h in enumerate(hs):
+        ax.bar(x + (j - (len(hs) - 1) / 2) * 0.26, [S.loc[h, m] for m, _ in mets], width=0.24, color=COH[h],
+               label=f"{h.replace('_', '-')} held out")
+    ax.set_xticks(x)
+    ax.set_xticklabels([l.replace("\n", " ") for _, l in mets], fontsize=4.4, rotation=40, ha="right",
+                       rotation_mode="anchor")
+    ax.set_ylim(0, 1.05)
+    ax.set_ylabel("recovered / median r", fontsize=5)
+    despine(ax)
+    ax.legend(loc="upper left", fontsize=4.3, handlelength=0.8, bbox_to_anchor=(0.0, -0.42), ncol=1)
+    txt = []
+    for h, keys in (("TCGA", ["risk_RFS_train_CLCA_c_index"]), ("CLCA", ["risk_RFS_train_TCGA_c_index", "risk_OS_train_TCGA_c_index"])):
+        if h in S.index:
+            vals = [f"{k.split('_')[1]} {S.loc[h, k]:.2f}" for k in keys if k in S.columns and pd.notna(S.loc[h, k])]
+            txt.append(f"{h}: {', '.join(vals)}")
+    ax.text(0.0, -0.78, "C-index, network + model\nwithout the test cohort:\n" + "\n".join(txt), transform=ax.transAxes,
+            fontsize=4.4, va="top", color=Q.INK)
+    ax.set_title("Leave-one-out", fontsize=6.2)
+    return S
 
 
 def figure2(D, P, outdir, log, m07c):
@@ -767,16 +792,17 @@ def figure2(D, P, outdir, log, m07c):
     axd, axe = f2d_e_km(fig, r3[1], D, P)
     letter(axd, "d", x=-0.3)
     letter(axe, "e", x=-0.1)
-    r4 = gridspec.GridSpecFromSubplotSpec(1, 3, subplot_spec=gs[3], width_ratios=[1.55, 1.25, 0.42], wspace=0.28)
+    r4 = gridspec.GridSpecFromSubplotSpec(1, 3, subplot_spec=gs[3], width_ratios=[1.45, 1.12, 0.78], wspace=0.3)
     axf, fo = f2f_forest(fig, r4[0], D)
     letter(axf, "f", x=-0.6)
     r4g = gridspec.GridSpecFromSubplotSpec(1, 2, subplot_spec=r4[1], width_ratios=[0.5, 1], wspace=0.0)
     ax = fig.add_subplot(r4g[1])
     H = f2g_benchmark(ax, D)
     letter(ax, "g", x=-0.55)
-    ax = fig.add_subplot(r4[2])
-    f2h_loco(ax)
-    letter(ax, "h", x=0.05, y=0.97)
+    r4h = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=r4[2], height_ratios=[1, 0.9], hspace=0.0)
+    ax = fig.add_subplot(r4h[0])
+    loco = f2h_loco(ax, D)
+    letter(ax, "h", x=-0.08, y=1.02)
     for ext in ("pdf", "png"):
         fig.savefig(os.path.join(outdir, f"figure2.{ext}"))
     plt.close(fig)
@@ -784,6 +810,8 @@ def figure2(D, P, outdir, log, m07c):
         w.to_frame("weight").to_excel(xw, "2a_weights")
         fo.to_excel(xw, "2f_forest", index=False)
         H.to_excel(xw, "2g_benchmark", index=False)
+        if loco is not None:
+            loco.to_excel(xw, "2h_loco")
     log.info("Figure 2 written")
 
 

@@ -66,7 +66,13 @@ external cohorts (OS: 1.47, 0.92–2.36, heterogeneity P = 0.005; recurrence: 1.
 likelihood-ratio P ≥ 0.10 in every cohort. The model performs comparably to published signatures but doesn't
 improve on them.
 
-**h**, Placeholder: leave-one-cohort-out network stability (pending).
+**h**, Leave-one-cohort-out stability. The network was rebuilt without each discovery cohort (ComBat, MINER and causal
+inference on the remaining two cohorts only; technical regulons removed by gene content). Bars show the fraction of
+full-network regulators recovered, the median correlation between each full-network program's activity and its best
+leave-out match in the held-out cohort (all programs, and the 25% with the largest risk weights), and the fraction of
+high-confidence driver→regulator edges (same direction) recovered among the leave-out MINER-filtered flows (CTNNB1
+and all drivers). C-index of a ridge program model built entirely without the test cohort (network and training):
+TCGA RFS 0.62; CLCA RFS 0.60, OS 0.67.
 
 ## Panel → source
 
