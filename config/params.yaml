@@ -260,12 +260,24 @@ validation:
       annot_skiprows: 27
       clinical: data/external_validation/GSE14520/GSE14520_Extra_Supplement.txt.gz
       endpoints: [RFS, OS]
-    LIRI_JP:                         # ICGC LIRI-JP via HCCDB18 (RNA-seq), OS only
+    LIRI_JP:                         # ICGC LIRI-JP via HCCDB18 (RNA-seq, log2), Japanese, HCV-dominant; OS only
       loader: hccdb
       expression: data/external_validation/HCCDB18_LIRI-JP/HCCDB18_mRNA_level3.txt
       sample: data/external_validation/HCCDB18_LIRI-JP/HCCDB18.sample.txt
       patient: data/external_validation/HCCDB18_LIRI-JP/HCCDB18.patient.txt
-      symbol_column: Symbol          # VERIFY when the file is available
+      os: {time: SUR, to_days: 30.44, status: STATUS, event_values: [Dead]}     # SUR in months
       stage_column: TNM_STAGE_T1
-      log2: false                    # VERIFY
+      stage_map: {I: 1, II: 2, III: 3, IV: 4}
+      log2: false                    # level-3 values are already log2 (max ~16)
       endpoints: [OS]
+    GSE76427:                        # Singapore (Grinchuk 2018) via HCCDB17, Illumina HT-12 v4 (log2)
+      loader: hccdb
+      expression: data/external_validation/GSE76427/HCCDB17_mRNA_level3.txt
+      sample: data/external_validation/GSE76427/HCCDB17.sample.txt
+      patient: data/external_validation/GSE76427/HCCDB17.patient.txt
+      os: {time: OS_YEAR, to_days: 365.25, status: OS_STATUS, event_values: [Dead]}
+      rfs: {time: RFS_YEAR, to_days: 365.25, status: RFS_STATUS, event_values: ["Yes"]}   # Yes = recurred
+      stage_column: BCLC_STAGE
+      stage_map: {"0": 0, A: 1, B: 2, C: 3}
+      log2: false
+      endpoints: [RFS, OS]

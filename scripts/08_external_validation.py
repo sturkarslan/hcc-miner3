@@ -72,27 +72,33 @@ def load_geo_gse14520(cfg, log):
 
 
 def load_hccdb(cfg, log):
-    x = pd.read_csv(p(cfg["expression"]), sep="\t", index_col=0)
+    """HCCDB level-3 matrix (Entrez_ID, Symbol, samples; already log2) + sample/patient tables (transposed).
+    Survival columns, units, event values and the stage column are set per cohort in the config."""
+    x = pd.read_csv(p(cfg["expression"]), sep="\t")
+    x = x.drop(columns=[c for c in ("Entrez_ID",) if c in x.columns]).dropna(subset=["Symbol"]).set_index("Symbol")
     sa = pd.read_csv(p(cfg["sample"]), sep="\t", index_col=0, header=None).T
-    pa = pd.read_csv(p(cfg["patient"]), sep="\t", index_col=0, header=None).T
-    sa = sa[sa["TYPE"] == "HCC"].drop_duplicates("PATIENT_ID")
-    pa = pa.set_index("PATIENT_ID")
-    sym_col = cfg.get("symbol_column")
-    if sym_col and sym_col in x.columns:
-        x = x.set_index(sym_col)
-    x = x.loc[:, [c for c in x.columns if c in set(sa["SAMPLE_ID"])]].apply(pd.to_numeric, errors="coerce")
-    x = x.groupby(level=0).mean()
-    sa = sa[sa["SAMPLE_ID"].isin(x.columns)].set_index("SAMPLE_ID")
-    pt = pa.loc[sa["PATIENT_ID"]]
-    num = lambda s: pd.to_numeric(s, errors="coerce")  # noqa: E731
-    stage = pt[cfg["stage_column"]].map({"I": 1, "II": 2, "III": 3, "IV": 4}).astype(float)
-    clin = pd.DataFrame({"OS_time": num(pt["SUR"]).values * 30.44,
-                         "OS_event": (pt["STATUS"].str.lower() == "dead").astype(float).values,
-                         "stage": stage.values}, index=sa.index)
+    pa = pd.read_csv(p(cfg["patient"]), sep="\t", index_col=0, header=None).T.set_index("PATIENT_ID")
+    sa["TYPE"] = sa["TYPE"].str.strip()
+    sa = sa[(sa["TYPE"] == "HCC") & sa["SAMPLE_ID"].isin(x.columns)]
+    n0 = len(sa)
+    sa = sa.drop_duplicates("PATIENT_ID").set_index("SAMPLE_ID")      # one tumour per patient (first listed)
+    x = x[sa.index].apply(pd.to_numeric, errors="coerce").groupby(level=0).mean()
     if cfg.get("log2"):
         x = np.log2(x + 1)
-    log.info("HCCDB: %d genes, %d tumours", x.shape[0], x.shape[1])
-    return x[clin.index], clin
+    pt = pa.reindex(sa["PATIENT_ID"])
+    num = lambda s: pd.to_numeric(s, errors="coerce").values  # noqa: E731
+    clin = pd.DataFrame(index=sa.index)
+    for ep in ("OS", "RFS"):
+        c = cfg.get(ep.lower())
+        if not c:
+            continue
+        clin[f"{ep}_time"] = num(pt[c["time"]]) * float(c["to_days"])
+        ev = pt[c["status"]].astype(str).str.strip()
+        clin[f"{ep}_event"] = np.where(pt[c["status"]].isna(), np.nan, ev.isin(c["event_values"]).astype(float).values)
+    clin["stage"] = pt[cfg["stage_column"]].astype(str).str.strip().map(cfg["stage_map"]).astype(float).values
+    log.info("HCCDB %s: %d genes; %d tumour samples, %d patients kept (one tumour each)", cfg["expression"],
+             x.shape[0], n0, len(clin))
+    return x, clin
 
 
 LOADERS = {"geo_gse14520": load_geo_gse14520, "hccdb": load_hccdb}
@@ -391,6 +397,49 @@ def figures(cohort_data, V, outdir):
         ax.legend(loc="upper left", fontsize=6.5)
     fig.tight_layout()
     Q._save(fig, outdir, "v3_program_replication.png", written)
+    # v4: forest of HR per SD (TCGA-trained models) with a fixed-effect pooled estimate per endpoint
+    E = pd.concat([v[2] for v in cohort_data.values()])
+    E = E[E["model"].str.contains("TCGA")].copy()
+    E["b"] = np.log(E["hr_per_sd"])
+    E["se"] = (np.log(E["hr_per_sd_hi"]) - np.log(E["hr_per_sd_lo"])) / (2 * 1.96)
+    rows = []
+    for ep, g in E.groupby("endpoint"):
+        for _, r in g.iterrows():
+            rows.append((f"{r['cohort']} {ep} (n={int(r['n'])}, events={int(r['events'])})", r["b"], r["se"], False, r["c_index"]))
+        w = 1 / g["se"] ** 2
+        b = (w * g["b"]).sum() / w.sum()
+        se = np.sqrt(1 / w.sum())
+        qh = (w * (g["b"] - b) ** 2).sum()
+        k = len(g)
+        rows.append((f"pooled {ep}, fixed effect (heterogeneity p = {stats.chi2.sf(qh, k - 1):.3f})", b, se, True, np.nan))
+        # DerSimonian-Laird random effects
+        tau2 = max(0.0, (qh - (k - 1)) / (w.sum() - (w ** 2).sum() / w.sum())) if k > 1 else 0.0
+        wr = 1 / (g["se"] ** 2 + tau2)
+        br = (wr * g["b"]).sum() / wr.sum()
+        rows.append((f"pooled {ep}, random effects (τ² = {tau2:.3f})", br, np.sqrt(1 / wr.sum()), True, np.nan))
+    fig, ax = plt.subplots(figsize=(8.8, 0.9 + 0.42 * len(rows)))
+    for i, (lab, b, se, pooled, c) in enumerate(rows):
+        lo, hi = np.exp(b - 1.96 * se), np.exp(b + 1.96 * se)
+        pz = 2 * stats.norm.sf(abs(b / se))
+        ax.plot([lo, hi], [i, i], color=Q.INK if pooled else Q.MUTED, lw=2 if pooled else 1.4)
+        ax.scatter(np.exp(b), i, marker="D" if pooled else "s", s=60 if pooled else 36,
+                   color=Q.SLOTS[7] if pooled else Q.INK2, zorder=3)
+        txt = f"HR/SD {np.exp(b):.2f} ({lo:.2f}-{hi:.2f}), p = {pz:.1e}" + ("" if pooled else f", C = {c:.2f}")
+        ax.text(3.9, i, txt, va="center", fontsize=7, color=Q.INK2)
+    ax.axvline(1, color=Q.AXIS, lw=0.8)
+    ax.set_xscale("log")
+    ax.set_xlim(0.4, 3.8)
+    ax.set_xticks([0.5, 1, 2, 3])
+    ax.set_xticklabels(["0.5", "1", "2", "3"])
+    ax.xaxis.set_minor_formatter(matplotlib.ticker.NullFormatter())
+    ax.set_yticks(range(len(rows)))
+    ax.set_yticklabels([r[0] for r in rows], fontsize=7.5)
+    ax.invert_yaxis()
+    ax.grid(axis="y", visible=False)
+    ax.set_xlabel("Cox HR per SD of the program risk score (36 months; TCGA-trained, never refit)")
+    ax.set_title("External validation of the MINER program risk score", loc="left", fontsize=9.5)
+    fig.subplots_adjust(right=0.62)
+    Q._save(fig, outdir, "v4_forest_external.png", written)
     return written
 
 
