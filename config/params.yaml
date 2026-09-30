@@ -245,3 +245,27 @@ risk:
     max_alpha: 5000
     alpha_step: 100
     seed: 12
+
+# ---------------------------------------------------------------- step 08 (external validation)
+validation:
+  horizon_days: 1096                 # 36 months, as in discovery
+  top_fraction: 0.2                  # within-cohort top 20% = predicted high risk
+  min_regulon_coverage: 0.5          # regulon scored if >= this fraction of its genes is measured
+  models: [TCGA_RFS_h36m, TCGA_OS_h36m, CLCA_RFS_h36m]   # step-06 ridge program models (weights never refit)
+  cohorts:
+    GSE14520:                        # LCI (Roessler 2010), Affymetrix HT_HG-U133A (GPL3921), HBV-dominant, resected
+      loader: geo_gse14520
+      expression: data/external_validation/GSE14520/GSE14520-GPL3921_series_matrix.txt.gz
+      platform_annot: data/external_validation/GSE14520/GPL3921.annot.gz
+      annot_skiprows: 27
+      clinical: data/external_validation/GSE14520/GSE14520_Extra_Supplement.txt.gz
+      endpoints: [RFS, OS]
+    LIRI_JP:                         # ICGC LIRI-JP via HCCDB18 (RNA-seq), OS only
+      loader: hccdb
+      expression: data/external_validation/HCCDB18_LIRI-JP/HCCDB18_mRNA_level3.txt
+      sample: data/external_validation/HCCDB18_LIRI-JP/HCCDB18.sample.txt
+      patient: data/external_validation/HCCDB18_LIRI-JP/HCCDB18.patient.txt
+      symbol_column: Symbol          # VERIFY when the file is available
+      stage_column: TNM_STAGE_T1
+      log2: false                    # VERIFY
+      endpoints: [OS]
