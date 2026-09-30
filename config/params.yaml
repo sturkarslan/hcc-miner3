@@ -139,6 +139,12 @@ post:
     fdr: 0.05
     seed: 1
     center: all                # all = the step-02 z-score across samples; cohort = re-centre within cohort
+  causal_figures:              # step 07d
+    endpoint: RFS
+    n_regulators: 14           # f9: top regulon families per driver (by |Cohen's d|)
+    flow_drivers: [MUT_CTNNB1, MUT_TP53, MUT_AXIN1, AMP_CCND1_FGF19, MUT_BAP1, MUT_NFE2L2]
+    arm_events: [ARM_1q_gain, ARM_8p_loss, ARM_8q_gain, ARM_17p_loss, ARM_4q_loss, ARM_16q_loss, ARM_13q_loss,
+                 ARM_6q_loss, ARM_6p_gain]
   figures:                     # step 07c
     risk_model: ridge_programs_TCGA_RFS_h36m   # step-06 predictor whose score and weights are shown
     endpoint: RFS

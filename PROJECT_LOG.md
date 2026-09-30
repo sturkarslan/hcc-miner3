@@ -33,6 +33,19 @@ Keep entries short: date, what, why.
 
 ## Decisions
 
+- **[2026-09-30] Step 07d: causal-flow figures** (`scripts/07d_causal_figures.py`, hcc-prep env; `results/07_post/figures/f8_causal_driver_program.png`, `f9_causal_flows.png`, `causal_driver_summary.tsv`, `causal_flow_edges.tsv`). Uses step-05 high-confidence flows, one row per driver × regulon family (the flow with the largest |d|), so redundant regulons count once.
+  - **"Net risk push"** of a driver = Σ over its causal families of sign(Cohen's d) × the risk-model weight of the family's program (TCGA RFS ridge model, step 06). This is computed without any survival data on the drivers themselves.
+  - **Key result: the causal layer explains driver prognosis.** Net push vs each driver's observed association with recurrence (Cox z per cohort on profiled samples, Stouffer over TCGA + CLCA; CNA features TCGA only): **Spearman ρ 0.64, p 1.1×10⁻³, 23 drivers** (all non-arm features with high-confidence flows + 9 frequent arm events).
+    - Adverse: 13q loss (push +0.53, z 2.8), 4q loss (+0.51, z 1.2), TSC2 (+0.44), TP53 (+0.42, z 1.9), p53 / cell-cycle pathway (+0.35, z 2.2), BAP1 (+0.32, z −1.1: the main outlier, n = 37), 16q loss (+0.31), 17p loss (+0.24, z 4.1), RB1, CCND1/FGF19 amplification.
+    - Protective: APC (−0.21), NFE2L2 (−0.18, z −1.1), CTNNB1 (−0.18, z −0.3), WNT pathway (−0.08, z −1.0).
+  - **f9 mechanisms (top 14 families by |d|):**
+    - CTNNB1: LEF1 ↑; FOXA3 / RARA / OTX1 / PDX1 repressors ↓ → P2 (Chiang CTNNB1 up, r 0.96) and P7 (Woo recurrence dn, r 0.91) up; TEAD3 / GATA6 / NFATC2 / HOXB2 / SOX17 ↓ → adverse P42, P73 and P21 (Boyault G1 dn, r −0.80) down.
+    - TP53: E2F2, ZNF143, STAT3, GATA4, MAF family ↑ → P55 (E2F targets), P35 (Kim poor survival), P58 (ROS), P38 up.
+    - AXIN1: PRDM1, EOMES, BHLHE40, FOXP3, TFEB, LEF1 ↓ → P47 / P64 / P63 / P1 down (immune/stromal) — an immune-cold route distinct from CTNNB1 (CTNNB1 raises LEF1; AXIN1 lowers it).
+    - CCND1/FGF19 amp: E2F1/E2F2/E2F8, ESRRA, MAFB, ZNF143 ↑ → 10 adverse programs up incl. P55, P31, P30 (KRT19-like).
+    - BAP1: ZNF263 / ZNF143 / MAZ / SOX4 / FOXO3 ↑ → P22 (Yamashita EPCAM up, r 0.78), P52, P21 up — progenitor-like.
+    - NFE2L2: ELF3 / ARID3A / TEAD3 / KLF4 / STAT1 ↓ → adverse P42, P38, P31 down; HLF ↑ → P7 up. Protective net push, consistent with its observed z.
+  - Program labels in f9 = best HCC-class / prognostic / hallmark signature by activity r (global mean regressed out), with hepatoblastoma sets excluded because they mostly restate the proliferation axis.
 - **[2026-09-29] Step 07c update (user request): clustered heatmaps + state risk-vs-survival figure.**
   - f1 (programs × states) and f4 (programs × signatures) are now hierarchically clustered on both axes (average linkage, correlation distance) with dendrograms; annotation tracks and risk-weight bars follow the clustered order; f4 has a signature-group color strip.
     - f4 resolves three blocks: (1) CTNNB1 / Boyault G5–G6 / Désert periportal–perivenous / metabolic hallmarks, with mostly protective programs (P2, P3, P4, P7, P17); (2) immune / stromal: Hoshida S1, EMT, interferon and inflammatory hallmarks, with the protective immune programs (P11, P13, P16, P33, P60) plus some adverse ones (P35, P44, P48); (3) proliferation / progenitor: Hoshida S2, Chiang proliferation, EPCAM/KRT19, MYC targets, OXPHOS, with the adverse programs (P22, P31, P46, P55, P74).
