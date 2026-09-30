@@ -203,3 +203,28 @@ causal:
   min_altered_hc: 30       # high-confidence: feature altered in >= this many profiled samples (small-group d is unstable)
   gene_positions: data/LIHC-TCGA-GDC-Xena/gencode.v36.annotation.gtf.gene.probemap   # hg38, for cis-dosage flag
   cytoband: data/reference/cytoBand_hg38.txt.gz
+
+# ---------------------------------------------------------------- step 06 (risk)
+risk:
+  subtypes_dir: subtypes_filtered
+  survival_cohorts: [TCGA, CLCA]      # LICA-FR has no survival
+  endpoints: [RFS, OS]                # RFS = CLCA RFS / TCGA PFS
+  survival_suffix: _h36m              # common 36-month horizon (never pool survival across cohorts)
+  q_max: 0.1                          # prognostic: BH q of the meta-z, same sign in every cohort
+  # MINER generatePredictor (xgboost 1.7.6 from envs/pylib-miner)
+  method: xgboost
+  n_estimators: 100
+  iterations: 20
+  class1_proportion: 0.2              # top 20% GuanRank within the training cohort = high risk
+  test_proportion: 0.35
+  train_test:                         # train in one cohort, evaluate in the others (never seen)
+    - {train: TCGA, endpoint: RFS, test: [CLCA]}
+    - {train: TCGA, endpoint: OS, test: [CLCA]}
+    - {train: CLCA, endpoint: RFS, test: [TCGA]}
+  ridge:                              # MINER optimize_ridge_model (Part C; primary risk model)
+    features: [programs, regulons]
+    train_cut_low: 0.5                # low-risk training class = bottom 50% by GuanRank (MINER default)
+    n_iter: 250                       # bootstrap iterations for alpha
+    max_alpha: 5000
+    alpha_step: 100
+    seed: 12

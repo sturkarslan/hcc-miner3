@@ -874,3 +874,70 @@ def causal_report(outdir, feat_tab, fam_tab):
         fig.tight_layout()
         _save(fig, qc, "c2_feature_program_heatmap.png", written)
     return written
+
+
+def risk_report(outdir, R, surv):
+    """r1: KM of predicted high- vs low-risk in each external cohort, per predictor.
+    r2: program-level Cox z per cohort for the prognostic programs (meta q <= R['q_max'], consistent)."""
+    qc = os.path.join(outdir, "qc")
+    written = []
+    sfx = R["survival_suffix"]
+    runs = [(tr, f"{tr['train']}_{tr['endpoint']}{sfx}", "MINER xgboost") for tr in R["train_test"]]
+    runs += [(tr, f"ridge_{fs}_{tr['train']}_{tr['endpoint']}{sfx}", f"MINER ridge ({fs})")
+             for fs in R.get("ridge", {}).get("features", []) for tr in R["train_test"]]
+    for tr, tag, label in runs:
+        f = os.path.join(outdir, f"predictor_{tag}", "predictions.tsv")
+        if not os.path.exists(f):
+            continue
+        pred = pd.read_csv(f, sep="\t", index_col=0)
+        ev = pd.read_csv(os.path.join(outdir, f"predictor_{tag}", "evaluation.tsv"), sep="\t")
+        tests = tr["test"]
+        fig, axes = plt.subplots(1, len(tests), figsize=(4.8 * len(tests), 4.2), squeeze=False)
+        for ax, c in zip(axes[0], tests):
+            s = surv[(c, tr["endpoint"])]
+            for grp, col, lab in ((1, SLOTS[7], "predicted high risk"), (0, SLOTS[0], "predicted low risk")):
+                ids = s.index.intersection(pred.index[pred["predicted_high_risk"] == grp])
+                if len(ids) == 0:
+                    continue
+                ts, ss, t, e = kaplan_meier(s.loc[ids, "duration"] / 30.44, s.loc[ids, "observed"])
+                ax.step(np.append(ts, t.max()), np.append(ss, ss[-1]), where="post", color=col,
+                        label=f"{lab} (n={len(t)}, events={int(e.sum())})")
+            r = ev[ev["cohort"] == c]
+            sub = ""
+            if len(r):
+                r = r.iloc[0]
+                sub = (f"C = {r['c_index']:.2f}; HR top vs rest {r.get('hr', np.nan):.2f} "
+                       f"({r.get('hr_lo', np.nan):.2f}-{r.get('hr_hi', np.nan):.2f})")
+            ax.set_title(f"{c}: {label}, trained in {tr['train']} ({tr['endpoint']})\n{sub}", fontsize=9)
+            ax.set_ylim(0, 1.02)
+            ax.set_xlabel("months")
+            ax.set_ylabel("survival probability")
+            ax.legend(loc="lower left")
+        fig.tight_layout()
+        _save(fig, qc, f"r1_km_{tag}.png", written)
+    for ep in R["endpoints"]:
+        f = os.path.join(outdir, f"prognostic_programs{sfx}_{ep}.tsv")
+        if not os.path.exists(f):
+            continue
+        t = pd.read_csv(f, sep="\t", index_col=0)
+        t = t[(t["meta_q"] <= R["q_max"]) & t["consistent"]].sort_values("meta_z")
+        if t.empty:
+            continue
+        zc = [c for c in t.columns if c.startswith("z_")]
+        fig, ax = plt.subplots(figsize=(5.6, 0.6 + 0.22 * len(t)))
+        y = np.arange(len(t))
+        colors = cohort_colors([c[2:] for c in zc])
+        for j, c in enumerate(zc):
+            ax.scatter(t[c], y + (j - (len(zc) - 1) / 2) * 0.2, s=16, color=colors[c[2:]], label=c[2:], zorder=3)
+        ax.scatter(t["meta_z"], y, marker="|", s=120, color=INK, label="meta", zorder=4)
+        ax.axvline(0, color=AXIS, lw=0.8)
+        ax.set_yticks(y)
+        ax.set_yticklabels([f"P{i}" for i in t.index], fontsize=7)
+        ax.set_xlabel("Cox z (> 0: higher activity, worse outcome)")
+        ax.set_ylim(-0.7, len(t) - 0.3)
+        ax.grid(axis="y", visible=False)
+        ax.legend(loc="lower right")
+        ax.set_title(f"Prognostic programs, {ep} (36-month horizon)")
+        fig.tight_layout()
+        _save(fig, qc, f"r2_prognostic_programs_{ep}.png", written)
+    return written
