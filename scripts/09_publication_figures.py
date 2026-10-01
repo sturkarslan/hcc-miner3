@@ -64,8 +64,10 @@ MODEL_COL = {"background": Q.BACKGROUND, "muted": Q.MUTED, "slot2": Q.SLOTS[2], 
              "slot4": Q.SLOTS[4], "slot5": Q.SLOTS[5], "slot6": Q.SLOTS[6]}
 
 
-# Red-blue is reserved for risk and regulon dysregulation; every other heatmap uses viridis.
+# Red-blue is reserved for risk and regulon dysregulation; fractions use viridis and signed
+# correlations a purple-green diverging scale.
 FRAC_CMAP = "viridis"
+COR_CMAP = "PRGn"  # signed correlations: purple negative, white zero, green positive
 
 
 def class_tag(key, level):
@@ -334,7 +336,7 @@ def f1d_signatures(ax, D):
     panel = PN.signatures(available=set(D["cor"].columns))
     sigs = [x["set"] for x in panel]
     C = D["cor"].loc[ks, sigs]
-    im = ax.imshow(C.values, aspect="auto", cmap=FRAC_CMAP, vmin=-1, vmax=1, interpolation="none")
+    im = ax.imshow(C.values, aspect="auto", cmap=COR_CMAP, vmin=-1, vmax=1, interpolation="none")
     ax.set_yticks(range(len(ks)))
     ax.set_yticklabels([plab(D, k) for k in ks], fontsize=4.6)
     for t, k in zip(ax.get_yticklabels(), ks):

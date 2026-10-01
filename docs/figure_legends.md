@@ -55,7 +55,7 @@ Tracks: mean risk score per state; fraction of tumours in published HCC classes,
 code or source in grey: Montironi 2023 immune classes (Inflamed 20-gene signature by nearest-template prediction, then
 Sia 2017 immune class within inflamed tumours and CTNNB1 mutation within non-inflamed tumours), and the reference
 Hoshida S1–S3 and Boyault G1–G6 classes by nearest-template prediction; mutation frequencies.
-**d**, Pearson correlation (viridis scale, −1 to 1) across tumours between program activity and reference-panel signature scores (immune and
+**d**, Pearson correlation (purple–green scale: purple negative, green positive) across tumours between program activity and reference-panel signature scores (immune and
 immunotherapy-response signatures from Montironi 2023, Sia 2017, Haber 2023 and Zhu 2022; WNT/β-catenin activation;
 Gao 2019 proteogenomic axes; Désert 2017 zonation classes; selected hallmarks; Hoshida classes as references), with
 each tumour's mean expression regressed out of both. Program names are coloured by the sign of their risk-model
