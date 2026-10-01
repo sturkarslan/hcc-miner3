@@ -41,6 +41,16 @@ Keep entries short: date, what, why.
   - Causal layer: 10 regulators have opposite direction under the two drivers (LEF1, TCF7, NR3C1, HLF, RORA, NFE2L1 up in CTNNB1 / down in AXIN1; FOXA3, ARID3A, GRHL1, ZIC2 the reverse); 31 same direction.
   - Labels added to `config/program_labels.tsv` for P47, P64, P1 (named by regulators). Step 07e results stay as a candidate supplementary figure (`results/07_post/driver_push/qc/`).
   - Limits: expression only, no protein or spatial data; AXIN1 n = 24–27 per cohort; novelty partial (see novelty entry).
+- **[2026-10-01] Custom signatures: Gao et al., Cell 2019 added** (`config/subtype_signatures_custom.tsv`, built by `scripts/tools/extract_gao2019_signatures.py` from user-provided Tables S3, S5 and S7; the xlsx files are not versioned). 11 sets, 4,784 rows:
+  - CTNNB1-mutant vs WT proteins (131 up / 61 dn) and TP53-mutant vs WT proteins (60 / 50), BH adj. P < 0.05.
+  - mRNA panels associated with ADH1A (good prognosis; 622 / 938) and PYCR2 (poor prognosis; 696 / 913).
+  - 39 protective prognostic proteins (HR < 1; the 3 with HR > 1 are too few for a set).
+  - Tumour vs non-tumour proteins (392 / 882).
+  - **Correction:** Gao's proteomic classes are Subgroups 1/2/3, not S-I/S-II/S-III (that's Jiang 2019). They are not in Tables S3–S7; Table S1/S2 is needed.
+  - Désert 2017 was already in MSigDB. TCGA iClusters are per-sample labels (`SUBTYPE`), not a gene list.
+  - Verified that the current 07a parses all 11 sets (as `custom:GAO2019_*` and `_DN`). **Rerun 07a/07b on the server** to include them.
+  - **Zhu et al., Nat Med 2022 added** (`scripts/tools/extract_zhu2022_signatures.py`, Supplementary Table 2). `ZHU2022_ABRS` = the 10-gene atezolizumab–bevacizumab response signature (CXCR2P1, ICOS, TIMD4, CTLA4, PAX5, KLRC3, FCRL3, AIM2, GBP5, CCL4). It is marked only by red font in the table, so it is read from the cell colour, and the script stops unless exactly 10 genes are found. `ZHU2022_ATEZOBEV_RESPONDER_UP` = 187 genes higher in responders in both trials; only 2 genes are lower, too few for a set. The Teff / Treg / myeloid / angiogenesis signatures are in the paper's Methods, not the supplement.
+  - **Pinyol et al., J Hepatol 2021: nothing to extract.** The supplement scores published signatures (its Table S15: Hoshida, Chiang, Sia, Villanueva, Moffitt, Yoshihara, hallmarks) and gives GSEA results on existing sets, but no new gene list. NASH-specific genes would have to be re-derived from GEO (GSE164760 vs GSE63898).
 - **[2026-10-01] Step 07e run on real data (SLURM 15008); Figure 1f replaced; earlier claim retracted.** The original 1f (ρ 0.64, 23 drivers; step 07d and "Candidate 2" in the novelty entry below) was circular (TCGA-trained weights against a TCGA+CLCA outcome), breadth-biased (sum over families) and treated overlapping drivers as independent. Those entries are superseded by this one.
   - **Pre-specified primary test** (`post.driver_push.primary`: d_mean, RFS, unadjusted, all drivers, out of sample):
     - CLCA weights → TCGA outcome: 71 drivers / 33 clusters, ρ 0.34 (cluster bootstrap 0.08–0.53), naive p 0.003, permuted-weights p 0.041, random-family p 0.070, one driver per cluster ρ 0.16.
