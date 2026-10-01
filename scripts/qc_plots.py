@@ -941,3 +941,123 @@ def risk_report(outdir, R, surv):
         fig.tight_layout()
         _save(fig, qc, f"r2_prognostic_programs_{ep}.png", written)
     return written
+
+
+# ================================================================== step 07e
+
+def driver_push_report(outdir, table, S, nulls, clusters, primary):
+    """Figures for the unbiased driver-push analysis (step 07e)."""
+    qc = os.path.join(outdir, "qc")
+    written = []
+    ep, pk = primary["endpoint"], primary["predictor"]
+    oos = [x for x in S.loc[S["kind"] == "out_of_sample", "pairing"].unique()]
+    ins = [x for x in S.loc[S["kind"] == "in_sample", "pairing"].unique()]
+    test_of = table.drop_duplicates("pairing").set_index("pairing")["test"]
+    ccol = cohort_colors(list(pd.unique(table["test"])))
+    pcol = {pn: (ccol[test_of[pn]] if pn in oos else MUTED) for pn in oos + ins}
+
+    # ---- e1: primary scatter per pairing (out-of-sample first, in-sample reference after)
+    pairs = oos + ins
+    fig, axes = plt.subplots(1, len(pairs), figsize=(3.6 * len(pairs), 3.6), squeeze=False, layout="constrained")
+    for ax, pn in zip(axes[0], pairs):
+        t = table[(table["pairing"] == pn) & (table["endpoint"] == ep)]
+        r = S[(S["pairing"] == pn) & (S["endpoint"] == ep) & (S["adjustment"] == "none")
+              & (S["driver_set"] == "all") & (S["predictor"] == pk)]
+        if t.empty or r.empty:
+            ax.set_visible(False)
+            continue
+        r = r.iloc[0]
+        arm = (t["type"] == "arm_cna").values
+        ax.axhline(0, color=AXIS, lw=0.6)
+        ax.axvline(0, color=AXIS, lw=0.6)
+        ax.scatter(t.loc[~arm, pk], t.loc[~arm, "z"], s=14 + 0.08 * t.loc[~arm, "n_altered_test"], color=SLOTS[0],
+                   edgecolor=SURFACE, lw=0.5, label="mutation / focal / pathway", zorder=3)
+        ax.scatter(t.loc[arm, pk], t.loc[arm, "z"], s=14 + 0.08 * t.loc[arm, "n_altered_test"], color=SLOTS[1],
+                   edgecolor=SURFACE, lw=0.5, label="arm-level CNA", zorder=3)
+        for _, q in t.iterrows():
+            if q["type"] != "arm_cna" or abs(q["z"]) > 2:
+                ax.annotate(str(q["driver"]).replace("MUT_", "").replace("PATH_", "").replace("ARM_", ""),
+                            (q[pk], q["z"]), fontsize=5.5, xytext=(2, 2), textcoords="offset points", color=INK2)
+        ax.text(0.02, 0.98, f"ρ = {r['rho']:.2f} [{r['boot_lo']:.2f}, {r['boot_hi']:.2f}]\n"
+                            f"P(weights perm) = {r['p_perm_weights']:.3f}\nP(family perm) = {r['p_perm_families']:.3f}\n"
+                            f"n = {int(r['n'])} drivers, {int(r['n_clusters'])} clusters",
+                transform=ax.transAxes, va="top", fontsize=7, color=INK2,
+                bbox=dict(boxstyle="round,pad=0.3", fc=SURFACE, ec=GRID, alpha=0.9))
+        ax.set_title(pn + ("" if pn in oos else "  [reference: circular]"), fontsize=9)
+        ax.set_xlabel(f"{pk} (weights from {pn.split('->')[0]})")
+        ax.set_ylabel(f"Cox z in {test_of[pn]} ({ep}; > 0 worse)")
+    axes[0][0].legend(handles=[Line2D([], [], marker="o", ls="", ms=6, mfc=SLOTS[0], mec=SURFACE,
+                                      label="mutation / focal / pathway"),
+                               Line2D([], [], marker="o", ls="", ms=6, mfc=SLOTS[1], mec=SURFACE,
+                                      label="arm-level CNA")], loc="lower right", fontsize=6.5)
+    fig.suptitle(f"Driver risk push vs prognosis in a cohort the weights never saw (primary: {pk}, {ep})",
+                 x=0.01, ha="left", fontweight="bold", color=INK, fontsize=10)
+    _save(fig, qc, "e1_push_vs_prognosis.png", written)
+
+    # ---- e2: rho with cluster-bootstrap CI, all predictors x pairings
+    preds = ["sign_sum", "sign_mean", "d_mean", "d_mean_strict", "delta_total", "delta_causal", "delta_noncausal"]
+    sub = S[(S["endpoint"] == ep) & (S["adjustment"] == "none") & (S["driver_set"] == "all")]
+    fig, ax = plt.subplots(figsize=(7.2, 0.5 * len(preds) + 2.4), layout="constrained")
+    off = np.linspace(-0.3, 0.3, max(1, len(pairs)))
+    for j, pn in enumerate(pairs):
+        for i, pr in enumerate(preds):
+            r = sub[(sub["pairing"] == pn) & (sub["predictor"] == pr)]
+            if r.empty:
+                continue
+            r = r.iloc[0]
+            yv = i + off[j]
+            ax.plot([r["boot_lo"], r["boot_hi"]], [yv, yv], color=pcol[pn], lw=1.5)
+            sig = r["p_perm_weights"] < 0.05
+            mk = "o" if pn in oos else ("s" if pn == ins[0] else "D")
+            ax.scatter([r["rho"]], [yv], s=34, marker=mk, color=pcol[pn] if sig else SURFACE, edgecolor=pcol[pn],
+                       lw=1.4, zorder=3)
+    ax.axvline(0, color=INK2, lw=0.8)
+    ax.set_yticks(range(len(preds)), preds)
+    ax.invert_yaxis()
+    ax.set_xlabel("Spearman ρ with test-cohort Cox z (bar: cluster-bootstrap 95% CI; filled: weight-permutation P < 0.05)")
+    hd = [Line2D([], [], marker="o" if pn in oos else ("s" if pn == ins[0] else "D"), ls="-", color=pcol[pn], mfc=pcol[pn],
+                 label=pn if pn in oos else pn + " [circular reference]") for pn in pairs]
+    ax.legend(handles=hd, fontsize=7, loc="upper left", bbox_to_anchor=(0, -0.12), ncol=2)
+    ax.set_title(f"Which definition of driver risk push tracks prognosis ({ep}, all drivers)")
+    _save(fig, qc, "e2_rho_by_predictor.png", written)
+
+    # ---- e3: null distributions for the primary predictor
+    keys = [(pn, ep) for pn in oos if (pn, ep) in nulls]
+    if keys:
+        fig, axes = plt.subplots(len(keys), 2, figsize=(8, 2.6 * len(keys)), squeeze=False, layout="constrained")
+        for row, key in zip(axes, keys):
+            t = table[(table["pairing"] == key[0]) & (table["endpoint"] == ep)]
+            y = t["z"].values.astype(float)
+            obs = S[(S["pairing"] == key[0]) & (S["endpoint"] == ep) & (S["adjustment"] == "none")
+                    & (S["driver_set"] == "all") & (S["predictor"] == pk)]["rho"]
+            for ax, nl, name in zip(row, nulls[key], ("program weights shuffled", "random families / programs")):
+                vals = [stats_spearman(n_[pk], y) for n_ in nl]
+                ax.hist(vals, bins=30, color=BACKGROUND, edgecolor=SURFACE)
+                if len(obs):
+                    ax.axvline(obs.iloc[0], color=pcol[key[0]], lw=2)
+                ax.set_title(f"{key[0]}: null = {name}", fontsize=8.5)
+                ax.set_xlabel("Spearman ρ")
+        fig.suptitle(f"Permutation nulls for {pk} (line = observed)", x=0.01, ha="left", fontweight="bold", color=INK,
+                     fontsize=10)
+        _save(fig, qc, "e3_nulls.png", written)
+
+    # ---- e4: driver overlap (Jaccard) and clusters, first out-of-sample pairing
+    key = next((k for k in clusters if k[0] in oos and k[1] == ep), next(iter(clusters)))
+    J, cl = clusters[key]
+    order = cl.sort_values().index
+    fig, ax = plt.subplots(figsize=(0.22 * len(order) + 2.5, 0.22 * len(order) + 1.8), layout="constrained")
+    im = ax.imshow(J.loc[order, order].values, cmap=SEQ, vmin=0, vmax=1)
+    lab = [f"{d.replace('MUT_', '').replace('PATH_', '').replace('ARM_', '')} [{cl[d]}]" for d in order]
+    ax.set_xticks(range(len(order)), lab, rotation=90, fontsize=5.5)
+    ax.set_yticks(range(len(order)), lab, fontsize=5.5)
+    ax.grid(False)
+    fig.colorbar(im, ax=ax, shrink=0.6, label="Jaccard overlap of altered tumours")
+    ax.set_title(f"Driver clusters (bracket = cluster; {cl.nunique()} clusters from {len(cl)} drivers)", fontsize=9)
+    _save(fig, qc, "e4_driver_clusters.png", written)
+    return written
+
+
+def stats_spearman(x, y):
+    from scipy import stats as _st
+    ok = ~(np.isnan(x) | np.isnan(y))
+    return _st.spearmanr(x[ok], y[ok])[0] if ok.sum() >= 5 else np.nan

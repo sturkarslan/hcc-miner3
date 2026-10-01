@@ -156,6 +156,23 @@ post:
                         HOSHIDA_LIVER_CANCER_SUBCLASS_S3, CHIANG_LIVER_CANCER_SUBCLASS_PROLIFERATION_UP,
                         CHIANG_LIVER_CANCER_SUBCLASS_CTNNB1_UP, VILLANUEVA_LIVER_CANCER_KRT19_UP,
                         DESERT_STEM_CELL_HEPATOCELLULAR_CARCINOMA_SUBCLASS_UP]
+  driver_push:                 # step 07e: unbiased test of Figure 1f (see script docstring)
+    # Weights from the model trained in `train` are only compared with driver Cox z in `test`.
+    pairings:
+      - {train: TCGA, train_endpoint: RFS, test: CLCA}
+      - {train: CLCA, train_endpoint: RFS, test: TCGA}
+    in_sample_reference: true  # also report train == test (the circular version) for contrast
+    endpoints: [RFS, OS]       # outcome in the test cohort (36-month files); weights stay RFS-trained
+    stage_adjust: true         # also report stage-adjusted driver Cox z (BCLC / AJCC)
+    min_altered_test: 10       # driver eligible in a test cohort with >= this many altered and
+    min_wt_test: 10            #   >= this many wild-type tumours with survival
+    cluster_jaccard: 0.25      # drivers whose altered-tumour sets overlap at Jaccard >= this cluster together
+    n_perm: 1000               # program-weight permutations
+    n_perm_families: 500       # random-family / random-program draws
+    n_boot: 1000               # cluster bootstrap
+    seed: 7
+    # Pre-specified primary test (fixed before looking at results). Everything else is sensitivity.
+    primary: {predictor: d_mean, endpoint: RFS, adjustment: none, driver_set: all}
 
 # ---------------------------------------------------------------- step 03b (genomic features for causal inference)
 genomics:

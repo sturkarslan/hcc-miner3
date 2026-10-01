@@ -33,6 +33,18 @@ Keep entries short: date, what, why.
 
 ## Decisions
 
+- **[2026-10-01] Step 07e: unbiased re-test of Figure 1f (driver net risk push vs prognosis). Written in the cloud session, tested on synthetic data only; not yet run on real data.** `scripts/07e_driver_push_validation.py`, settings in `post.driver_push`, outputs in `results/07_post/driver_push/`.
+  - **Why:** Figure 1f's weights come from the ridge model trained on TCGA recurrence, and its y-axis meta-analyses TCGA + CLCA recurrence. Half of the y-axis is therefore in-sample (circular). The push is also an unnormalized sum, so it scales with the number of families (breadth, which favours arm events). The 23 drivers are not independent (TP53 / p53 pathway / 17p; CTNNB1 / WNT pathway / APC). The 9 arm events were hand-picked. And the naive Spearman P ignores all of this.
+  - **What 07e does:**
+    1. **Out-of-sample pairings only:** TCGA-trained weights vs driver Cox z in CLCA, and CLCA-trained weights vs z in TCGA. The in-sample pairings are kept as labelled circular references.
+    2. **Predictors:** `sign_sum` (original), `sign_mean` and `d_mean` (breadth-free), `d_mean_strict` (d from the training cohort only), and the model's total predicted risk shift Σ_k w_k Δ_k split into `delta_causal` (programs the driver causally reaches) and `delta_noncausal`.
+    3. **Permutation nulls** that keep the dependence between drivers: program weights shuffled, and random families / programs of the same number per driver (with the driver's own effect on them).
+    4. **Driver clusters** by Jaccard overlap of altered tumours (≥ 0.25): effective n, ρ on cluster representatives, cluster-bootstrap 95% CI.
+    5. **All eligible drivers** (≥ 10 altered and ≥ 10 wild-type tumours with survival in the test cohort); the Figure 1f set is a sensitivity subset. OS and stage-adjusted z are also sensitivity analyses.
+    - Reconstructed risk scores are checked against the step-06 predictions (r = 1.0000 on synthetic data).
+  - **Pre-specified primary test (fixed before results):** `d_mean`, RFS, unadjusted, all drivers, out-of-sample. Evidence that the causal layer adds something = `delta_causal` tracks prognosis about as well as `delta_total`, better than `delta_noncausal`, and beats the random-family null.
+  - Limitation: CLCA has no copy-number data, so the TCGA→CLCA pairing tests mutation/pathway/focal features only; arm events enter only via CLCA→TCGA.
+  - Figure 1f / legend wording ("without using any survival data") should be updated once 07e has run on real data.
 - **[2026-10-01] "What is novel?" assessment (user question).** Exploratory checks, not yet in a script.
   - **Not novel:** prognosis (step 07c/08: no gain over known signatures); the three program blocks; CTNNB1 → LEF1/TCF7; TP53 → E2F.
   - **CLCA-only states 28 and 25 are technical, not biology.** State 28: 87% of TPM in shared genes vs 61% in other CLCA (i.e. little RPPH1/RMRP small-RNA contamination), purity 0.71 vs 0.55. State 25: 48%, purity 0.40. Both are defined by P74 / P31 ("MYC targets") in opposite directions. **P74 is confounded by CLCA library composition** (it also vanished in the CLCA-out LOCO, r −0.03). It has the second-largest risk weight in the TCGA-trained model (trained without CLCA), so its CLCA scores should be treated with caution.
