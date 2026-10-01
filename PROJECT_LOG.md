@@ -33,6 +33,14 @@ Keep entries short: date, what, why.
 
 ## Decisions
 
+- **[2026-10-01] Custom signatures: Gao et al., Cell 2019 added** (`config/subtype_signatures_custom.tsv`, built by `scripts/tools/extract_gao2019_signatures.py` from user-provided Tables S3, S5 and S7; the xlsx files are not versioned). 11 sets, 4,784 rows:
+  - CTNNB1-mutant vs WT proteins (131 up / 61 dn) and TP53-mutant vs WT proteins (60 / 50), BH adj. P < 0.05.
+  - mRNA panels associated with ADH1A (good prognosis; 622 / 938) and PYCR2 (poor prognosis; 696 / 913).
+  - 39 protective prognostic proteins (HR < 1; the 3 with HR > 1 are too few for a set).
+  - Tumour vs non-tumour proteins (392 / 882).
+  - **Correction:** Gao's proteomic classes are Subgroups 1/2/3, not S-I/S-II/S-III (that's Jiang 2019). They are not in Tables S3–S7; Table S1/S2 is needed.
+  - Désert 2017 was already in MSigDB. TCGA iClusters are per-sample labels (`SUBTYPE`), not a gene list.
+  - Verified that the current 07a parses all 11 sets (as `custom:GAO2019_*` and `_DN`). **Rerun 07a/07b on the server** to include them.
 - **[2026-10-01] Step 07e: unbiased re-test of Figure 1f (driver net risk push vs prognosis). Written in the cloud session, tested on synthetic data only; not yet run on real data.** `scripts/07e_driver_push_validation.py`, settings in `post.driver_push`, outputs in `results/07_post/driver_push/`.
   - **Why:** Figure 1f's weights come from the ridge model trained on TCGA recurrence, and its y-axis meta-analyses TCGA + CLCA recurrence. Half of the y-axis is therefore in-sample (circular). The push is also an unnormalized sum, so it scales with the number of families (breadth, which favours arm events). The 23 drivers are not independent (TP53 / p53 pathway / 17p; CTNNB1 / WNT pathway / APC). The 9 arm events were hand-picked. And the naive Spearman P ignores all of this.
   - **What 07e does:**
