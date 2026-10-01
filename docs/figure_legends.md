@@ -49,12 +49,13 @@ external cohorts (GSE14520, n = 221; LIRI-JP, n = 203; GSE76427, n = 115) with f
 **b**, Network size at each level (log scale).
 **c**, Mean regulon dysregulation (over- minus under-expressed membership) of each program (rows) in each state
 (columns). States are hierarchically clustered (average linkage, correlation distance); programs are grouped into
-biology blocks (anchored on the reference panel: proliferation/progenitor, differentiated/WNT, immune/stromal).
+biology blocks (anchored on the reference panel: proliferation/progenitor, differentiated/WNT, immune/stromal);
+red–blue scale. Tracks use a separate (viridis) scale for the fraction of tumours.
 Tracks: mean risk score per state; fraction of tumours in published HCC classes, labelled by biology with the class
 code or source in grey: Montironi 2023 immune classes (Inflamed 20-gene signature by nearest-template prediction, then
 Sia 2017 immune class within inflamed tumours and CTNNB1 mutation within non-inflamed tumours), and the reference
 Hoshida S1–S3 and Boyault G1–G6 classes by nearest-template prediction; mutation frequencies.
-**d**, Pearson correlation across tumours between program activity and reference-panel signature scores (immune and
+**d**, Pearson correlation (viridis scale, −1 to 1) across tumours between program activity and reference-panel signature scores (immune and
 immunotherapy-response signatures from Montironi 2023, Sia 2017, Haber 2023 and Zhu 2022; WNT/β-catenin activation;
 Gao 2019 proteogenomic axes; Désert 2017 zonation classes; selected hallmarks; Hoshida classes as references), with
 each tumour's mean expression regressed out of both. Program names are coloured by the sign of their risk-model
@@ -102,7 +103,7 @@ unseen cohort.
 **b**, Risk score (within-cohort z) by published HCC class, labelled by biology: Montironi 2023 immune classes and
 Hoshida classes (calls for all 929 tumours, as in Fig. 1c), and the LICA-FR authors' Boyault labels (n = 324).
 Bars, median and interquartile range; Kruskal–Wallis P.
-**c**, States ordered by mean risk score. Top, class and mutation fractions; middle, risk score; bottom, observed recurrence as GuanRank computed within each cohort (TCGA and CLCA; 1,
+**c**, States ordered by mean risk score. Top, class and mutation fractions (viridis scale); middle, risk score; bottom, observed recurrence as GuanRank computed within each cohort (TCGA and CLCA; 1,
 earliest event). Boxes, median and interquartile range; whiskers, 1.5× interquartile range. State mean risk versus
 median GuanRank: Spearman ρ = 0.64, P = 2.2 × 10⁻⁴ (28 states with ≥ 5 tumours).
 **d**, **e**, Kaplan–Meier curves for the within-cohort top 20% of risk scores versus the rest. **d**, Cross-cohort

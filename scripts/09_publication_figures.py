@@ -64,6 +64,10 @@ MODEL_COL = {"background": Q.BACKGROUND, "muted": Q.MUTED, "slot2": Q.SLOTS[2], 
              "slot4": Q.SLOTS[4], "slot5": Q.SLOTS[5], "slot6": Q.SLOTS[6]}
 
 
+# Red-blue is reserved for risk and regulon dysregulation; every other heatmap uses viridis.
+FRAC_CMAP = "viridis"
+
+
 def class_tag(key, level):
     """Small grey tag next to a class label: the class code, or the source when the code is the label."""
     lab = PN.class_label(key, level)
@@ -272,7 +276,7 @@ def f1c_map(fig, sub, D):
     axr.text(-0.6, 0, "risk", ha="right", va="center", fontsize=5.2)
     for i, T in enumerate(tracks):
         ax = fig.add_subplot(gs[2 + i, 2])
-        ax.imshow(T.values.astype(float), aspect="auto", cmap=Q.SEQ, vmin=0, vmax=1, interpolation="none")
+        imt = ax.imshow(T.values.astype(float), aspect="auto", cmap=FRAC_CMAP, vmin=0, vmax=1, interpolation="none")
         ax.set_yticks(range(len(T)))
         ax.set_yticklabels([t.split("|")[0] for t in T.index], fontsize=4.8)
         ax.set_xticks([])
@@ -315,6 +319,11 @@ def f1c_map(fig, sub, D):
     cb.set_label("regulon dysregulation", fontsize=4.6, labelpad=1)
     cb.ax.tick_params(labelsize=4.2, length=1.5, width=0.3)
     cb.outline.set_linewidth(0.3)
+    cax = axl.inset_axes([0.05, -0.2, 0.85, 0.018])
+    cb = fig.colorbar(imt, cax=cax, orientation="horizontal", ticks=[0, 0.5, 1])
+    cb.set_label("fraction of tumours (tracks)", fontsize=4.6, labelpad=1)
+    cb.ax.tick_params(labelsize=4.2, length=1.5, width=0.3)
+    cb.outline.set_linewidth(0.3)
     return M, pd.DataFrame(tracks[0])
 
 
@@ -325,7 +334,7 @@ def f1d_signatures(ax, D):
     panel = PN.signatures(available=set(D["cor"].columns))
     sigs = [x["set"] for x in panel]
     C = D["cor"].loc[ks, sigs]
-    im = ax.imshow(C.values, aspect="auto", cmap=Q.DIV, vmin=-1, vmax=1, interpolation="none")
+    im = ax.imshow(C.values, aspect="auto", cmap=FRAC_CMAP, vmin=-1, vmax=1, interpolation="none")
     ax.set_yticks(range(len(ks)))
     ax.set_yticklabels([plab(D, k) for k in ks], fontsize=4.6)
     for t, k in zip(ax.get_yticklabels(), ks):
@@ -347,12 +356,13 @@ def f1d_signatures(ax, D):
     for i in range(1, len(bk)):
         if bk[i] != bk[i - 1]:
             ax.axhline(i - 0.5, color="white", lw=1.2)
-    ax.set_title("What the programs are (activity r with reference signatures)", pad=9)
-    cax = ax.inset_axes([0.78, 1.035, 0.22, 0.018])
-    cb = plt.colorbar(im, cax=cax, orientation="horizontal")
-    cb.ax.tick_params(labelsize=4.2, length=1.5, width=0.3)
+    ax.set_title("What the programs are (activity r with reference signatures)", pad=13)
+    cax = ax.inset_axes([0.78, 1.02, 0.22, 0.018])
+    cb = plt.colorbar(im, cax=cax, orientation="horizontal", ticks=[-1, 0, 1])
+    cb.ax.xaxis.set_ticks_position("top")
+    cb.ax.tick_params(labelsize=4.2, length=1.5, width=0.3, pad=1)
     cb.outline.set_linewidth(0.3)
-    cb.set_label("r", fontsize=5, labelpad=0)
+    ax.text(0.77, 1.029, "r", transform=ax.transAxes, fontsize=5, ha="right", va="center")
     ax.text(0.0, 1.035, "row colour: risk weight (red adverse, blue protective)", transform=ax.transAxes, fontsize=4.4,
             color=Q.INK2, va="bottom", ha="left")
     return C
@@ -621,13 +631,19 @@ def f2c_states(fig, sub, D, m07c, P):
     gs = gridspec.GridSpecFromSubplotSpec(3, 2, subplot_spec=sub, height_ratios=[len(rows), 5, 5], hspace=0.1,
                                           width_ratios=[0.2, 1], wspace=0.0)
     ax0 = fig.add_subplot(gs[0, 1])
-    ax0.imshow(np.array(rows), aspect="auto", cmap=Q.SEQ, vmin=0, vmax=1, interpolation="none")
+    im0 = ax0.imshow(np.array(rows), aspect="auto", cmap=FRAC_CMAP, vmin=0, vmax=1, interpolation="none")
+    cax = ax0.inset_axes([0.86, 1.04, 0.14, 0.06])
+    cb = fig.colorbar(im0, cax=cax, orientation="horizontal", ticks=[0, 0.5, 1])
+    cb.ax.xaxis.set_ticks_position("top")
+    cb.ax.tick_params(labelsize=4.2, length=1.5, width=0.3, pad=1)
+    cb.outline.set_linewidth(0.3)
+    ax0.text(0.855, 1.07, "fraction of tumours", transform=ax0.transAxes, fontsize=4.4, ha="right", va="center", color=Q.INK2)
     ax0.set_yticks(range(len(labs)))
     ax0.set_yticklabels(labs, fontsize=4.5)
     ax0.set_xticks([])
     for sp in ax0.spines.values():
         sp.set_linewidth(0.3)
-    ax0.set_title("States ordered by mean risk: class composition, predicted risk, observed outcome")
+    ax0.set_title("States ordered by mean risk: class composition, predicted risk, observed outcome", loc="left", y=1.02)
     x = np.arange(len(s_order))
     for axi, vals, lab in ((1, D["risk"], "risk score (z)"), (2, guan, "GuanRank (RFS)")):
         ax = fig.add_subplot(gs[axi, 1], sharex=ax0)
