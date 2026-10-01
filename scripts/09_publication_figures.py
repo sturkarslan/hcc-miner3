@@ -185,8 +185,8 @@ def f1a_design(ax, D, P):
            ("LICA-FR", "LICA_FR", ["n = 324 · RNA-seq (TPM)", "WES/WGS · CNA · no survival", "alcohol/NASH/viral, France"])]
     for i, (t, c, lines) in enumerate(coh):
         box(0, 26 - i * 12.5, 20.3, 11, t, lines, COH[c])
-    steps = [("Harmonize", ["13,866 genes", "ComBat by cohort", "RNA-quality axis", "removed"]),
-             ("MINER network", ["co-expression", "→ regulons", "→ programs", "→ states"]),
+    steps = [("Harmonize", ["13,866 genes", "log2 TPM", "ComBat by cohort"]),
+             ("MINER network", ["regulons (186", "technical excluded)", "→ programs", "→ states"]),
              ("Causal inference", ["113 genomic", "features: driver", "→ regulator", "→ regulon"]),
              ("Risk model", ["ridge on", "76 programs;", "TCGA ↔ CLCA", "36 months"])]
     for i, (t, lines) in enumerate(steps):
@@ -438,30 +438,55 @@ def f1e_ctnnb1(ax, D, P, n_top=12, force=("LEF1", "TCF7", "TCF7L1")):
     return sel
 
 
-def f1f_push(ax, D, P):
-    d = pd.read_csv(os.path.join(D["res"], "07_post", "figures", "causal_driver_summary.tsv"), sep="\t", index_col=0)
-    d = d.dropna(subset=["surv_meta_z"])
-    ax.axhline(0, color=Q.AXIS, lw=0.4)
-    ax.axvline(0, color=Q.AXIS, lw=0.4)
-    col = [Q.SLOTS[1] if t == "arm_cna" else Q.INK for t in d["type"]]
-    ax.scatter(d["net_risk_push"], d["surv_meta_z"], s=6 + 0.05 * d["n_altered"], color=col, edgecolor="white",
-               linewidth=0.3, zorder=3)
-    lab = lambda f: f.replace("MUT_", "").replace("PATH_", "").replace("AMP_", "amp ").replace("ARM_", "").replace("_", " ")  # noqa: E731
-    for f, r in d.iterrows():
-        if r["type"] != "arm_cna" or abs(r["surv_meta_z"]) > 2:
-            ax.annotate(lab(f).replace("p53 cell cycle", "p53/cell-cycle").replace("NRF2 oxidative stress", "NRF2"),
-                        (r["net_risk_push"], r["surv_meta_z"]), fontsize=4.4, xytext=(2, 1.5), textcoords="offset points")
-    rho, pv = stats.spearmanr(d["net_risk_push"], d["surv_meta_z"])
-    ax.text(0.03, 0.97, f"ρ = {rho:.2f}, P = {pv:.3f}\n{len(d)} drivers", transform=ax.transAxes, fontsize=5.2, va="top")
-    ax.set_xlim(d["net_risk_push"].min() - 0.05, d["net_risk_push"].max() + 0.14)
-    ax.set_xlabel("causal net risk push")
-    ax.set_ylabel("observed recurrence association (Cox z)")
-    ax.scatter([], [], color=Q.INK, s=8, label="mutation / focal / pathway")
-    ax.scatter([], [], color=Q.SLOTS[1], s=8, label="arm-level CNA")
-    ax.legend(loc="lower right", fontsize=4.6)
-    despine(ax)
-    ax.set_title("Causal layer explains driver prognosis")
-    return d
+def f1f_push(fig, sub, D, P):
+    """Driver risk push vs driver prognosis, out of sample only (step 07e): program weights trained in one
+    cohort, driver Cox z measured in the other. Pre-specified predictor and endpoint (post.driver_push.primary)."""
+    ddir = os.path.join(D["res"], "07_post", "driver_push")
+    prim = P["post"]["driver_push"]["primary"]
+    pred, ep = prim["predictor"], prim["endpoint"]
+    T = pd.read_csv(os.path.join(ddir, "driver_table.tsv"), sep="\t")
+    S = pd.read_csv(os.path.join(ddir, "summary.tsv"), sep="\t")
+    T = T[(T["kind"] == "out_of_sample") & (T["endpoint"] == ep)]
+    S = S[(S["kind"] == "out_of_sample") & (S["endpoint"] == ep) & (S["adjustment"] == prim["adjustment"])
+          & (S["driver_set"] == prim["driver_set"]) & (S["predictor"] == pred)].set_index("pairing")
+    order = ["CLCA->TCGA", "TCGA->CLCA"]
+    gs = gridspec.GridSpecFromSubplotSpec(1, 2, subplot_spec=sub, wspace=0.34)
+    lab = lambda f: (f.replace("MUT_", "").replace("PATH_", "").replace("AMP_", "amp ").replace("ARM_", "")  # noqa: E731
+                     .replace("_", " ").replace("p53 cell cycle", "p53 pathway").replace("NRF2 oxidative stress", "NRF2")
+                     .replace("CCND1 FGF19", "CCND1"))
+    show = {"MUT_TP53", "MUT_CTNNB1", "MUT_AXIN1", "MUT_NFE2L2", "MUT_RB1", "MUT_TSC2", "MUT_BAP1", "MUT_APC",
+            "PATH_WNT", "PATH_p53_cell_cycle", "ARM_17p_loss", "ARM_13q_loss", "MUT_ARID1A"}
+    axes = []
+    for j, pr in enumerate(order):
+        ax = fig.add_subplot(gs[j])
+        axes.append(ax)
+        d = T[T["pairing"] == pr].dropna(subset=[pred, "z"])
+        ax.axhline(0, color=Q.AXIS, lw=0.4)
+        ax.axvline(0, color=Q.AXIS, lw=0.4)
+        x = 1000 * d[pred]
+        ax.scatter(x, d["z"], s=5 + 0.04 * d["n_altered_test"], color=[Q.SLOTS[1] if t == "arm_cna" else Q.INK for t in d["type"]],
+                   edgecolor="white", linewidth=0.3, zorder=3)
+        for _, r in d.iterrows():
+            if r["driver"] in show:
+                right = 1000 * r[pred] > x.min() + 0.7 * (x.max() - x.min())
+                ax.annotate(lab(r["driver"]), (1000 * r[pred], r["z"]), fontsize=4.1, textcoords="offset points",
+                            xytext=(-2, 1.5) if right else (2, 1.5), ha="right" if right else "left")
+        r = S.loc[pr]
+        tr, te = pr.split("->")
+        ax.text(0.0, 1.015, f"ρ = {r['rho']:.2f} ({r['boot_lo']:.2f} to {r['boot_hi']:.2f}); "
+                f"P = {r['p_perm_weights']:.2f}\n{int(r['n'])} drivers, {int(r['n_clusters'])} clusters",
+                transform=ax.transAxes, fontsize=4.6, va="bottom")
+        ax.set_title(f"weights {tr} → outcome {te}", fontsize=5.6, pad=14, loc="left")
+        ax.set_xlabel("risk push ×10³ (mean d × weight)", fontsize=5.2)
+        ax.margins(x=0.12, y=0.12)
+        despine(ax)
+    axes[0].set_ylabel("driver recurrence association (Cox z)")
+    axes[0].scatter([], [], color=Q.INK, s=7, label="mutation / focal / pathway")
+    axes[0].scatter([], [], color=Q.SLOTS[1], s=7, label="arm-level CNA")
+    axes[0].legend(loc="lower right", fontsize=4.2, handletextpad=0.1, borderaxespad=0.1)
+    fig.text(axes[0].get_position().x0, axes[0].get_position().y1 + 0.036,
+             "Driver risk push vs driver prognosis, out of sample", fontsize=6.5, va="bottom")
+    return axes[0], T
 
 
 def figure1(D, P, outdir, log):
@@ -480,13 +505,12 @@ def figure1(D, P, outdir, log):
     axd = fig.add_subplot(dsub[0])
     C = f1d_signatures(axd, D)
     letter(axd, "d", x=-0.42, y=1.07)
-    bot = gridspec.GridSpecFromSubplotSpec(1, 2, subplot_spec=gs[2], width_ratios=[1.7, 1], wspace=0.22)
+    bot = gridspec.GridSpecFromSubplotSpec(1, 2, subplot_spec=gs[2], width_ratios=[1.38, 1], wspace=0.16)
     ax = fig.add_subplot(bot[0])
     e = f1e_ctnnb1(ax, D, P)
     letter(ax, "e", x=0.0, y=1.0)
-    ax = fig.add_subplot(bot[1])
-    f = f1f_push(ax, D, P)
-    letter(ax, "f", x=-0.14)
+    ax, f = f1f_push(fig, bot[1], D, P)
+    letter(ax, "f", x=-0.3, y=1.3)
     for ext in ("pdf", "png"):
         fig.savefig(os.path.join(outdir, f"figure1.{ext}"))
     plt.close(fig)
