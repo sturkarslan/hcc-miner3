@@ -4,6 +4,11 @@
 # Done:
 #   Gao et al., Cell 2019 (Tables S3, S5, S7; scripts/tools/extract_gao2019_signatures.py): GAO2019_* sets.
 #     Proteomic subgroups 1/2/3 are NOT in these tables (expected in Table S1/S2, not yet provided).
+#   Zhu et al., Nat Med 2022 (Supplementary Table 2; scripts/tools/extract_zhu2022_signatures.py): ZHU2022_ABRS
+#     (10-gene response signature) and ZHU2022_ATEZOBEV_RESPONDER_UP (187 genes). Teff / Treg / myeloid /
+#     angiogenesis signatures are in the paper's Methods, not the supplement: still to add.
+#   Pinyol et al., J Hepatol 2021: supplement has no new gene list (it scores published signatures, Table S15:
+#     Hoshida, Chiang, Sia, Villanueva, Moffitt, Yoshihara, hallmarks). Nothing to extract.
 # Not needed here:
 #   Desert et al., Hepatology 2017 - already in MSigDB (DESERT_*_HEPATOCELLULAR_CARCINOMA_SUBCLASS_UP).
 #   TCGA Cell 2017 iClusters - per-sample labels in the TCGA PanCan clinical file (SUBTYPE column); use as an annotation.
@@ -11,8 +16,8 @@
 #   Montironi et al., Gut 2023 (inflamed / intermediate / excluded immune classes)
 #   Sia et al., Gastroenterology 2017 (immune class; active vs exhausted)
 #   Haber et al., Gastroenterology 2023 (11-gene IFN signature, anti-PD-1 response)
-#   Zhu et al., Nat Med 2022 (atezolizumab-bevacizumab: Teff, VEGFR2, Treg, myeloid)
-#   Pinyol et al., J Hepatol 2021 (NASH-HCC)
+#   Zhu et al., Nat Med 2022 Methods (Teff, Treg, myeloid inflammation, angiogenesis)
+#   Moffitt et al., Nat Genet 2015 (activated stroma; used by Sia 2017 for the exhausted immune class)
 set	reference	direction	gene_symbol
 GAO2019_CTNNB1MUT_PROTEIN	Gao 2019 Cell 179:561 Table S7 '5. Fig 6E-CTNNB1 protein list'	up	ABHD6
 GAO2019_CTNNB1MUT_PROTEIN	Gao 2019 Cell 179:561 Table S7 '5. Fig 6E-CTNNB1 protein list'	up	ACAA1
@@ -4798,3 +4803,200 @@ GAO2019_TUMOR_VS_NORMAL_PROTEIN	Gao 2019 Cell 179:561 Table S3 '1. 1274 DF prote
 GAO2019_TUMOR_VS_NORMAL_PROTEIN	Gao 2019 Cell 179:561 Table S3 '1. 1274 DF proteins'	dn	WDR63
 GAO2019_TUMOR_VS_NORMAL_PROTEIN	Gao 2019 Cell 179:561 Table S3 '1. 1274 DF proteins'	dn	XDH
 GAO2019_TUMOR_VS_NORMAL_PROTEIN	Gao 2019 Cell 179:561 Table S3 '1. 1274 DF proteins'	dn	ZADH2
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	ACOXL
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	ADAMTS20
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	AGBL4
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	AIM2
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	ANKRD20A5P
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	ANKRD22
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	ANKRD36BP2
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	ANTXRLP1
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	ATP1A3
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	BANK1
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	BCL11B
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	BCL2A1
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	BLK
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	BTLA
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	CARD17
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	CASP5
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	CCL3
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	CCL4
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	CCL4L1
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	CCL5
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	CCR5
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	CCR7
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	CD19
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	CD1B
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	CD38
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	CD3E
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	CD3G
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	CD6
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	CD69
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	CD70
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	CD79A
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	CD8A
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	CD8B
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	CELA3A
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	CELF2-AS1
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	CHI3L2
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	CLEC17A
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	CLEC6A
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	CLNK
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	COL24A1
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	CPA2
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	CR1L
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	CR2
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	CRTAM
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	CSAG1
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	CT55
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	CTLA4
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	CXCL10
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	CXCL11
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	CXCL13
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	CXCL14
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	CXCL9
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	CXCR2P1
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	CYTIP
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	DCAF8L2
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	DTHD1
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	DUSP2
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	ELK2AP
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	EOMES
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	ERC2
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	ERMN
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	ETV7
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	EYA4
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	FAM129C
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	FAM133A
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	FASLG
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	FCRL1
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	FCRL2
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	FCRL3
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	FCRL4
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	FCRL5
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	FRMPD3
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	GAGE1
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	GAGE12H
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	GAGE12J
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	GAGE2A
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	GATA3
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	GBP5
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	GJB6
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	GLB1L3
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	GPR15
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	GPR174
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	GTSF1
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	GZMA
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	GZMB
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	GZMK
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	HAPLN3
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	HHLA2
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	HLA-DOB
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	HSH2D
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	ICOS
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	IDO1
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	IFNG
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	IGLL5
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	IKZF3
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	IL21R
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	IL2RG
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	IRF4
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	ITK
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	ITPRIPL1
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	JAKMIP1
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	KCNH7
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	KCNQ5
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	KIRREL2
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	KLHL14
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	KLRC1
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	KLRC2
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	KLRC3
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	KLRC4
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	KLRK1
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	LAG3
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	LAX1
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	LCK
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	LINC00173
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	LY9
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	MAGEA12
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	MAGEA3
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	MAGEA6
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	MCOLN2
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	MMP9
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	MS4A1
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	MUC15
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	MUC16
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	MYB
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	MZB1
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	NAA11
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	NCR1
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	NELL2
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	NKG7
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	NLRP2
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	NLRP4
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	NLRP7
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	NYAP2
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	OR52N4
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	P2RX5
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	P2RY10
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	PAX5
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	PCLO
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	PDCD1
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	PHEX
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	PLA2G2D
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	POU2AF1
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	PRDM8
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	PRF1
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	PRKCG
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	PRKCQ
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	PTPN22
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	PYHIN1
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	RAC2
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	RASGEF1A
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	REREP3
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	RGPD2
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	RGS1
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	RGS13
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	RHOH
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	RUNX3
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	SH2D1A
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	SH2D2A
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	SIRPG
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	SLAMF1
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	SLAMF7
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	SLC12A3
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	SOHLH2
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	SP140
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	STAP1
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	SYNGR3
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	TAGAP
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	THEMIS
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	TIGIT
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	TIMD4
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	TMEM178B
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	TMEM63C
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	TNFRSF13C
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	TNFRSF9
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	TNIP3
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	TOX
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	TRAT1
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	TTC24
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	TUBA3C
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	UBASH3A
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	VCX
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	VWDE
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	XCR1
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	ZBED2
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	ZBP1
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	ZNF215
+ZHU2022_ATEZOBEV_RESPONDER_UP	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (logFC > 0)	up	ZNF729
+ZHU2022_ABRS	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (red font: ABRS 10-gene signature)	up	CXCR2P1
+ZHU2022_ABRS	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (red font: ABRS 10-gene signature)	up	ICOS
+ZHU2022_ABRS	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (red font: ABRS 10-gene signature)	up	TIMD4
+ZHU2022_ABRS	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (red font: ABRS 10-gene signature)	up	CTLA4
+ZHU2022_ABRS	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (red font: ABRS 10-gene signature)	up	PAX5
+ZHU2022_ABRS	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (red font: ABRS 10-gene signature)	up	KLRC3
+ZHU2022_ABRS	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (red font: ABRS 10-gene signature)	up	FCRL3
+ZHU2022_ABRS	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (red font: ABRS 10-gene signature)	up	AIM2
+ZHU2022_ABRS	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (red font: ABRS 10-gene signature)	up	GBP5
+ZHU2022_ABRS	Zhu 2022 Nat Med 28:1599 Supplementary Table 2 (red font: ABRS 10-gene signature)	up	CCL4
