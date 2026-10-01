@@ -33,6 +33,17 @@ Keep entries short: date, what, why.
 
 ## Decisions
 
+- **[2026-10-01] "What is novel?" assessment (user question).** Exploratory checks, not yet in a script.
+  - **Not novel:** prognosis (step 07c/08: no gain over known signatures); the three program blocks; CTNNB1 → LEF1/TCF7; TP53 → E2F.
+  - **CLCA-only states 28 and 25 are technical, not biology.** State 28: 87% of TPM in shared genes vs 61% in other CLCA (i.e. little RPPH1/RMRP small-RNA contamination), purity 0.71 vs 0.55. State 25: 48%, purity 0.40. Both are defined by P74 / P31 ("MYC targets") in opposite directions. **P74 is confounded by CLCA library composition** (it also vanished in the CLCA-out LOCO, r −0.03). It has the second-largest risk weight in the TCGA-trained model (trained without CLCA), so its CLCA scores should be treated with caution.
+  - **Candidate 1: AXIN1 and CTNNB1 are two different routes to an immune-low tumour.** AXIN1-only mutants (n = 77; CTNNB1-only 218; both 4) vs double wild type (620), program activity, OLS adjusted for TP53, proliferation (P55) and cohort:
+    - WNT/β-catenin program P2: AXIN1 β −0.05 (t −0.6) vs CTNNB1 +1.43 (t 22.6); P7: +0.03 vs +1.09. Canonical targets GLUL / AXIN2 / NKD1: AXIN1 ≈ 0, CTNNB1 ≈ +1.5 z.
+    - Interferon programs lower in AXIN1 than in CTNNB1 mutants: IFN-γ P60 β −0.58 (t −5.1) vs −0.38; IFN-α P16 −0.42 vs −0.17. T-cell programs lower in CTNNB1: P11 −0.46 vs −0.67; P50 −0.37 vs −0.55. B2M −0.50 z in AXIN1 vs +0.10 in CTNNB1.
+    - Opposite direction: P47 (NFE2L2 / JUN / MAF regulators; ROS-pathway r 0.61) AXIN1 −0.56 (t −5.6) vs CTNNB1 +0.53 (t 7.8); P64 −0.71 (t −7.1) vs +0.22. AXIN1 effects have the same sign in all three cohorts for all of these.
+    - Program-effect profiles of the two drivers correlate only r 0.36 across 76 programs.
+    - **Novelty is partial:** low Wnt activity in AXIN1-mutant HCC and reduced T-cell infiltration in AXIN1/CTNNB1-mutant tumours are published (see sources in the chat answer). What may be new is the split: interferon / antigen-presentation-low without a Wnt program (AXIN1) vs T-cell exclusion with a Wnt program (CTNNB1), and the opposite NRF2-like program. Needs protein-level or spatial validation.
+  - **Candidate 2: a driver's prognostic effect is predictable from its causal effects on programs** (step 07d: net risk push vs observed recurrence z, ρ 0.64, p 0.001, 23 drivers). Testable predictions: TSC2 (+0.44), 4q loss (+0.51) and 13q loss (+0.53) adverse; NFE2L2 (−0.18) and APC (−0.21) protective.
+
 - **[2026-09-30] Step 08b: leave-one-cohort-out (LOCO)** (`scripts/08b_loco.py` prepare / filter / compare; chain `scripts/slurm/08b_loco_submit.sh`; `results/08_validation/loco/`; matrices `loco_no{TCGA,CLCA,LICA_FR}` in 02/04/05). For each held-out cohort: ComBat + z on the other two only, MINER mechinf → technical-regulon filter (gene-based: ≥ 50% genes in full-run modules 1/2/4/6, because module IDs change between runs) → subtypes_filtered → causal inference.
   - Networks: without TCGA 4,100 regulons / 381 regulators / 9,659 genes (284 technical removed); without CLCA 4,340 kept; without LICA-FR 4,392 / 384 / 9,860 (241 removed). Full network: 4,294 / 380 / 9,679. MINER returns more programs with fewer samples (163–193 vs 76).
   - **Regulators are stable (97% recovered in every LOCO); exact regulon gene sets are not** (median best Jaccard 0.10; only ~2% with Jaccard ≥ 0.5). Interpret at the regulator and program level, not exact regulon membership.
