@@ -10,7 +10,7 @@ Sets (all thresholds are the authors'; tables list only significant entries):
                                         (fold change mut/wt > 1 = up, < 1 = dn; BH adj. P < 0.05)
   GAO2019_ADH1A_ASSOC_MRNA (up / dn)    Table S5 sheet 4: mRNA panels associated with ADH1A protein
   GAO2019_PYCR2_ASSOC_MRNA (up / dn)    Table S5 sheet 2: mRNA panels associated with PYCR2 protein
-                                        ("up panel" = up, "bottom panel" = dn); ADH1A high = good, PYCR2 high = poor prognosis
+                                        ("bottom panel" = up, "up panel" = dn: panel = heatmap position); ADH1A high = good, PYCR2 high = poor prognosis
   GAO2019_PROGNOSTIC_PROTEIN_PROTECTIVE Table S5 sheet 1: candidate prognostic proteins with HR < 1
                                         (only 3 have HR > 1: too few for a set)
   GAO2019_TUMOR_VS_NORMAL_PROTEIN (up / dn)  Table S3 sheet 1: tumour vs adjacent non-tumour proteins
@@ -54,8 +54,12 @@ def main():
     for sheet, name in (("4. ADH1A List", "GAO2019_ADH1A_ASSOC_MRNA"), ("2. PYCR2 List", "GAO2019_PYCR2_ASSOC_MRNA")):
         d = pd.read_excel(a.mmc5, sheet_name=sheet).dropna(subset=["mRNA"])
         pan = d["Panel (mRNA)"].astype(str)
-        r, nb = rows(name, f"{REF} Table S5 '{sheet}' mRNA panels", d.loc[pan.str.contains("up"), "mRNA"],
-                     d.loc[pan.str.contains("bottom"), "mRNA"])
+        # "up panel" / "bottom panel" are positions in the paper's heatmap, not directions: the bottom panel
+        # holds the mRNAs positively associated with the protein (it contains PYCR2 / ADH1A themselves and
+        # its score correlates r +0.49 with the gene in our data; the up panel r -0.35 to -0.49). So
+        # bottom = up, up = dn. Checked on the server 2026-10-01.
+        r, nb = rows(name, f"{REF} Table S5 '{sheet}' mRNA panels", d.loc[pan.str.contains("bottom"), "mRNA"],
+                     d.loc[pan.str.contains("up"), "mRNA"])
         new += r
         print(f"{name}: {sum(x[2] == 'up' for x in r)} up, {sum(x[2] == 'dn' for x in r)} dn, {nb} conflicting dropped")
 

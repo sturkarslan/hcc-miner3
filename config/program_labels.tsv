@@ -1,7 +1,7 @@
 # Curated biology labels for MINER programs (step 09 publication figures).
-# 2026-10-01: evidence below predates the reference panel (config/reference_panel.yaml). After
-#   bash scripts/slurm/rerun_reference_panel.sh, compare with results/07_post/figures/program_labels_proposed.tsv
-#   (panel-first labels with evidence) and update; prefer recent signatures where they fit as well as the classics.
+# 2026-10-01: reviewed against results/07_post/figures/program_labels_proposed.tsv after the reference-panel re-run.
+#   Recent signatures adopted where they fit at least as well (P11, P60, P50, P17, P7, P1, P46); mechanical proposals that
+#   duplicated a name or described a program only by a negative correlation were not adopted.
 # Evidence = best signature by activity correlation (07b, per-sample global mean regressed out; hepatoblastoma
 # sets excluded) and top regulators (05 regulon families). A label names the dominant signal, not every gene.
 # Programs without strong evidence (best |r| < ~0.7) are named by regulators.
@@ -12,7 +12,7 @@ program	label	evidence
 65	DNA repair	HALLMARK_DNA_REPAIR 0.75; NRF1/MAX
 22	EPCAM+/KRT19+ progenitor	YAMASHITA_EPCAM_UP 0.78; ANDERSEN_KRT19_UP 0.75; NRF1/MAX/GABPB1
 23	Progenitor (S2-like)	HOSHIDA_S2 0.69; VILLANUEVA_KRT19_UP 0.60; PDX1/PBX1/CEBPA
-46	Stem-like HCC	DESERT_STEM_CELL_HCC_UP 0.80; MYC_TARGETS_V2 0.75; HMGA1/MECOM/HOXA3
+46	Stem-like HCC	DESERT_STEM_CELL_HCC_UP 0.80; Gao 2019 PYCR2 axis 0.82; MYC_TARGETS_V2 0.75; HMGA1/MECOM/HOXA3
 51	Progenitor (G1/G2-like)	BOYAULT_G12_UP 0.82; ELF1/YY2/SOX13
 58	ROS / mTORC1	HALLMARK_ROS_PATHWAY 0.78; MTORC1 0.67; MAFG/NR1H2/STAT1
 75	Glycolysis / ROS	HALLMARK_GLYCOLYSIS 0.60; mTORC1 overlap 13-fold; ZNF691/DR1/IRF7
@@ -23,17 +23,17 @@ program	label	evidence
 30	HNF1B/SOX12 program	best |r| 0.69 (SAKAI_CHRONIC_HEPATITIS_UP); SOX12/TRAF4/HNF1B
 68	HMGA1/TFAP4 program	best |r| 0.59 (ACEVEDO_H3K27ME3_DN); HMGA1/BPTF/TFAP4
 9	WNT, perivenous (TCF7)	DESERT_PERIVENOUS_UP 0.75; BOYAULT_G56_UP 0.71; LEF1/TCF7/HNF1A
-17	Hepatocyte-like (HNF4A)	HOSHIDA_S3 0.94; CHIANG_PROLIFERATION_DN 0.94; HNF4A/THRA/NR1I2
-7	Low recurrence (HNF1A)	WOO_RECURRENCE_DN 0.91; LEE_SURVIVAL_UP 0.90; HNF1A/ZBTB16
+17	Hepatocyte-like (HNF4A; ADH1A axis)	Gao 2019 ADH1A axis 0.94; HOSHIDA_S3 0.94; CHIANG_PROLIFERATION_DN 0.94; HNF4A/ZSCAN16/CTCF
+7	CTNNB1 proteome, low recurrence (HNF1A)	Gao 2019 CTNNB1-mutant proteome 0.96; WOO_RECURRENCE_DN 0.91; LEE_SURVIVAL_UP 0.90; HNF1A/ZBTB16
 4	Low risk (TCF7/CEBPA)	KIM_POOR_SURVIVAL_DN 0.84; WOO_RECURRENCE_DN 0.83; TCF7/CEBPA
 2	WNT/β-catenin (CTNNB1 class)	CHIANG_CTNNB1_UP 0.96; BOYAULT_G6_UP 0.94; LEF1/HNF4A/TCF4
 39	WNT/β-catenin (G6-like)	BOYAULT_G6_UP 0.82; CHIANG_CTNNB1_UP 0.77; FOXO3/SOX4
 3	Perivenous zonation	DESERT_PERIVENOUS_UP 0.89; CHIANG_CTNNB1_UP 0.87
 18	Periportal metabolism	DESERT_PERIPORTAL_UP 0.90; SOX7/MAFB/FOXP3
-11	Immune infiltration (T/NK)	HOSHIDA_S1 0.89; ALLOGRAFT_REJECTION overlap; TBX21/NFATC2/RUNX1
-60	Interferon-γ response	HALLMARK_IFNG_RESPONSE 0.97; IRF1/IRF8/IRF7
+11	Immune class (T/NK infiltrate)	Sia 2017 immune class r 0.96; HOSHIDA_S1 0.89; GLIS2/NFATC2/TBX21
+60	Interferon-γ / IFNAP	HALLMARK_IFNG_RESPONSE 0.97; Haber 2023 IFNAP 0.83; IRF1/IRF8/IRF7
 16	Interferon-α response	HALLMARK_IFNA_RESPONSE 0.91; IRF2/IRF1/STAT3
-50	Allograft / T-cell	HALLMARK_ALLOGRAFT_REJECTION 0.85; MAFK/IRF9/ETS1
+50	Myeloid / MDSC	MDSC (Haber 2023 Table S6) 0.88; HALLMARK_ALLOGRAFT_REJECTION 0.85; MAFK/IRF9/ETS1
 13	EMT / myogenic stroma	HALLMARK_MYOGENESIS 0.87; EMT 0.81; NR2F1/STAT1
 33	Endothelial / EMT	HALLMARK_EMT 0.89; SOX18/TEAD3/TEAD1
 21	Progenitor (G1-like)	BOYAULT_G1_DN r -0.80; BOYAULT_G1_UP 0.77; ZIC2/ZNF281/MAZ
@@ -43,4 +43,4 @@ program	label	evidence
 29	EGR1/FOXF1 program	best |r| 0.61 (YAMASHITA_STEM_CELL_UP); 2 regulons: EGR1/FOXF1
 47	NFE2L2/JUN program	best |r| 0.72 (BOYAULT_G1_DN); p53-pathway overlap 4.7-fold; NFE2L2/JUN/MAF
 64	KLF16/NFAT5 program	best |r| 0.63 (BOYAULT_G1_DN); KLF16/NFAT5/CREB5
-1	FOXJ3/NR3C1 program	IIZUKA_PROGRESSION_G2_G3_UP 0.82; FOXJ3/NR3C1/SMAD1
+1	CTNNB1 proteome (FOXJ3/NR3C1)	Gao 2019 CTNNB1-mutant proteome 0.80; IIZUKA_PROGRESSION_G2_G3_UP 0.82; FOXJ3/NR3C1/SMAD1

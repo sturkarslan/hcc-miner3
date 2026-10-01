@@ -159,7 +159,7 @@ def f1a_design(ax, D, P):
         x = 22.6 + i * 15.1
         box(x, 13.5, 14.1, 16, t, lines, Q.INK)
         arrow(x - 1.0 if i else 20.7, 21.5, x - 0.15, 21.5)
-    ax.text(22.6, 11.2, "Annotation: NTP classes (Hoshida, Boyault, Chiang), MSigDB hallmarks, LICA-FR author labels",
+    ax.text(22.6, 11.2, "Annotation: immune classes (Montironi 2023), reference classes (Hoshida, Boyault), hallmarks",
             fontsize=4.9, color=Q.INK2, va="top")
     ax.text(84.5, 39.5, "External validation", fontsize=5.8, fontweight="bold", va="top")
     ext = [("GSE14520", ["n = 221 · Affymetrix", "OS / RFS · HBV, China"]),
@@ -332,7 +332,7 @@ def f1d_signatures(ax, D):
         t.set_color(ADV if D["weights"].get(k, 0) > 0 else PROT)
     info = {x["set"]: (x["label"], x["tag"], x["block"]) for x in panel}
     ax.set_xticks(range(len(sigs)))
-    ax.set_xticklabels([f"{info[s][0]} ({info[s][1]})" for s in sigs], fontsize=4.6, rotation=60, ha="right",
+    ax.set_xticklabels([f"{info[s][0]} ({info[s][1]})" for s in sigs], fontsize=4.1, rotation=60, ha="right",
                        rotation_mode="anchor")
     for t, s in zip(ax.get_xticklabels(), sigs):
         t.set_color(BLOCK_COL[info[s][2]])
@@ -421,11 +421,13 @@ def f1f_axin1(fig, sub, D, P):
         d = T[T["pattern"] == k]
         ax.scatter(d["beta_CTNNB1"], d["beta_AXIN1"], s=7, color=col[k], edgecolor="white", linewidth=0.25, zorder=3,
                    label=f"{k} ({len(d)})")
-    for k, (dx, dy, ha) in {"2": (-2, -7, "right"), "7": (-2, 3, "right"), "47": (3, -5, "left"), "64": (3, -2, "left"),
-                            "21": (3, 2, "left"), "60": (-3, -3, "right"), "11": (-3, 1, "right"),
-                            "1": (3, -5, "left")}.items():
-        ax.annotate(D["plabel"].get(k, f"P{k}").split(" (")[0].replace(" program", ""), (T.loc[k, "beta_CTNNB1"], T.loc[k, "beta_AXIN1"]), fontsize=4.1,
-                    xytext=(dx, dy), textcoords="offset points", ha=ha)
+    names = {"2": ("WNT/β-catenin", -2, -7, "right"), "7": ("CTNNB1 proteome", -2, 3, "right"),
+             "47": ("NFE2L2/JUN", 3, -5, "left"), "64": ("KLF16/NFAT5", 3, -2, "left"), "21": ("Progenitor", 3, 2, "left"),
+             "60": ("Interferon-γ", -4, -4, "right"), "11": ("Immune class", -4, 0, "right"),
+             "1": ("FOXJ3/NR3C1", 3, -5, "left")}
+    for k, (nm, dx, dy, ha) in names.items():
+        ax.annotate(nm, (T.loc[k, "beta_CTNNB1"], T.loc[k, "beta_AXIN1"]), fontsize=4.1, xytext=(dx, dy),
+                    textcoords="offset points", ha=ha)
     ax.set_xlabel("CTNNB1-mutant effect (s.d.)")
     ax.set_ylabel("AXIN1-mutant effect (s.d.)")
     ax.margins(x=0.1, y=0.12)
@@ -524,7 +526,7 @@ def figure1(D, P, outdir, log):
     letter(ax, "b", x=-0.33)
     mid = gridspec.GridSpecFromSubplotSpec(1, 2, subplot_spec=gs[1], width_ratios=[1.25, 1], wspace=0.55)
     M, _ = f1c_map(fig, mid[0], D)
-    dsub = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=mid[1], height_ratios=[1, 0.27], hspace=0.0)
+    dsub = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=mid[1], height_ratios=[1, 0.4], hspace=0.0)
     axd = fig.add_subplot(dsub[0])
     C = f1d_signatures(axd, D)
     letter(axd, "d", x=-0.42, y=1.07)
@@ -591,7 +593,7 @@ def f2b_classes(fig, sub, D):
         ax.set_xticks(range(len(levels)))
         ax.set_xticklabels([PN.class_label(cl, lv) for lv in levels], fontsize=4.4, rotation=45, ha="right",
                            rotation_mode="anchor")
-        ax.set_title(f"{name} · P = {pk:.0e}".replace("e-0", "e-"), fontsize=5.0)
+        ax.set_title(f"{name}\nP = {pk:.0e}".replace("e-0", "e-"), fontsize=4.8)
         ax.axhline(0, color=Q.AXIS, lw=0.4)
         despine(ax)
         if j:
@@ -617,7 +619,7 @@ def f2c_states(fig, sub, D, m07c, P):
         rows.append([G.loc[m, [x for x in D["states"][s] if x in G.columns]].mean() for s in s_order])
         labs.append(lab)
     gs = gridspec.GridSpecFromSubplotSpec(3, 2, subplot_spec=sub, height_ratios=[len(rows), 5, 5], hspace=0.1,
-                                          width_ratios=[0.1, 1], wspace=0.0)
+                                          width_ratios=[0.2, 1], wspace=0.0)
     ax0 = fig.add_subplot(gs[0, 1])
     ax0.imshow(np.array(rows), aspect="auto", cmap=Q.SEQ, vmin=0, vmax=1, interpolation="none")
     ax0.set_yticks(range(len(labs)))
@@ -777,11 +779,13 @@ def f2g_benchmark(ax, D):
     ax.invert_yaxis()
     ax.set_xlim(0.42, 0.78)
     ax.set_xlabel("C-index")
-    ax.legend(loc="lower left", bbox_to_anchor=(0.0, 1.0), ncol=2, fontsize=4.4, handletextpad=0.2, columnspacing=0.8,
+    ax.legend(loc="lower left", bbox_to_anchor=(-0.5, 1.0), ncol=2, fontsize=4.2, handletextpad=0.2, columnspacing=0.6,
               borderaxespad=0.2)
     despine(ax)
     lr = H[(H["model"] == "MINER programs") & H["lr_p"].notna()]
-    ax.set_title(f"vs published signatures (MINER added: P ≥ {lr['lr_p'].min():.2f})", pad=17)
+    ax.set_title("vs published signatures", pad=24, loc="left", x=-0.5)
+    ax.text(0.99, 0.875, f"MINER added to all published: P ≥ {lr['lr_p'].min():.2f}", transform=ax.transAxes, fontsize=4.3,
+            ha="right", va="center", color=Q.INK2)
     return H
 
 

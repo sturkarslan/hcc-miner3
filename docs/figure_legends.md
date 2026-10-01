@@ -5,13 +5,10 @@ embedded as TrueType). Source data: `figure1_source_data.xlsx`, `figure2_source_
 `scripts/09_publication_figures.py` from saved results only; program names from `config/program_labels.tsv`
 (each with its evidence).
 
-> **Pending re-run (2026-10-01).** Published classes and signatures now come from the reference panel
-> (`config/reference_panel.yaml`): Montironi 2023 immune classes, Sia 2017 immune class, Haber 2023 IFNAP,
-> Zhu 2022 ABRS, Gao 2019 proteogenomic axes, Désert 2017 zonation classes and immune-cell sets first, with
-> Hoshida 2009 / Boyault 2007 / Chiang 2008 kept as references. The NTP null distribution was also corrected
-> (step 07b). Panel descriptions below are updated; **numbers and the narrative claims about classes and the
-> head-to-head comparison are from the previous run** and must be refreshed after
-> `bash scripts/slurm/rerun_reference_panel.sh` and curation of `config/program_labels.tsv`.
+> **Reference panel (re-run 2026-10-01).** Published classes and signatures come from
+> `config/reference_panel.yaml`: Montironi 2023 immune classes, Sia 2017 immune class, Haber 2023 IFNAP, Zhu 2022
+> ABRS, Gao 2019 proteogenomic axes, Désert 2017 zonation classes and immune-cell sets first, with Hoshida 2009 /
+> Boyault 2007 / Chiang 2008 kept as references. Numbers below are from this re-run.
 
 ---
 
@@ -25,7 +22,11 @@ fall into three familiar blocks of liver-cancer biology: proliferation and proge
 differentiation and WNT/β-catenin signalling; and immune and stromal content. Tumour states defined by the network
 line up with published HCC classes: states high in proliferation programs are enriched for proliferative classes and
 TP53 mutations, while states high in differentiation programs are enriched for hepatocyte-like and CTNNB1-mutant
-tumours. Causal inference connects driver mutations to specific regulators and programs. For example, CTNNB1 mutation
+tumours. The recent immune classification is recovered as well: 15 of 31 states are enriched for one Montironi class;
+for example 93% of state 4 is Immune (inflamed) and 76% of state 0 is Excluded. The programs match recent signatures
+as closely as the classic ones: the immune-infiltrate program tracks the Sia immune class (r = 0.96), the
+interferon-γ program tracks the IFNAP anti-PD-1 response signature (r = 0.83), and the hepatocyte and β-catenin
+programs track the Gao proteogenomic ADH1A axis (r = 0.94) and CTNNB1-mutant proteome (r = 0.96). Causal inference connects driver mutations to specific regulators and programs. For example, CTNNB1 mutation
 acts through the Wnt effectors LEF1 and TCF7 to switch on the β-catenin and low-recurrence programs. The network also separates
 two drivers that are usually grouped together as WNT-pathway mutations. CTNNB1-mutant tumours switch on the
 WNT/β-catenin programs and the classic liver targets GLUL, AXIN2 and NKD1. AXIN1-mutant tumours do not: they show
@@ -79,13 +80,18 @@ expression of WNT target, MHC class I and T-cell genes.
 A risk score built from the network's programs separates patients by recurrence and survival across six independent
 test settings. Its largest weights fall on proliferation, MYC and progenitor programs (adverse) and on
 hepatocyte-differentiation, low-recurrence and immune programs (protective). The score reproduces known HCC biology:
-it is highest in proliferative and TP53-related classes and lowest in hepatocyte-like and WNT/β-catenin classes. That
+it is highest in proliferative and TP53-related classes and lowest in hepatocyte-like and WNT/β-catenin classes.
+Immune classes separate risk far less than the proliferation–differentiation axis does (Montironi classes P = 2 × 10⁻⁵
+against Hoshida classes P = 4 × 10⁻⁶⁴): median risk is close to zero in the Immune, Excluded and Intermediate
+classes and higher only in the small Immune-like class (median z = 0.65, n = 48, half TP53-mutant). That
 holds even against the author-assigned classes of a cohort it was never trained on. Network states ordered by this
 score show a matching gradient of observed recurrence. The model was validated across cohorts in discovery and in
 three external cohorts spanning Affymetrix, RNA-seq and Illumina platforms and hepatitis B, hepatitis C and mixed
 aetiologies. Validation is strongest in LIRI-JP, where the top-risk fifth had a 5.3-fold higher death rate. The score
-performs comparably to, but not better than, published signatures such as the proliferation class, so its value lies
-in explaining risk mechanistically rather than in predicting it more accurately. When the network is rebuilt without
+performs comparably to, but not better than, published signatures: the Chiang proliferation signature and the Gao
+2019 proteogenomic prognosis axes match or slightly exceed it in about half of the test settings, immune and WNT class scores are weaker
+(C-index 0.50–0.57 for recurrence), and adding the network score to all published scores never improves the fit
+(P ≥ 0.11). Its value therefore lies in explaining risk mechanistically rather than in predicting it more accurately. When the network is rebuilt without
 each discovery cohort, regulators and key programs are recovered and the risk model performs just as well in the
 unseen cohort.
 
@@ -108,7 +114,7 @@ pre-specified TCGA-trained models, never refit. C, Harrell's C-index; HR, Cox ha
 Hoshida classes (2009); Chiang proliferation signature (2008); immune and WNT classes (Montironi 2023 Inflamed,
 Sia 2017 immune class, Haber 2023 IFNAP, WNT/β-catenin activation); Gao 2019 proteogenomic prognosis axes (PYCR2,
 ADH1A); and all published scores together (also TP53-mutant proteome, Désert stem-like, Hoshida S1–S3, Chiang
-proliferation and CTNNB1, KRT19, plus tumour mean expression). Adding the network score to all known scores: likelihood-ratio P ≥ 0.10 in every
+proliferation and CTNNB1, KRT19, plus tumour mean expression). Adding the network score to all known scores: likelihood-ratio P ≥ 0.11 in every
 cohort.
 **h**, Leave-one-cohort-out stability: the network, causal inference and risk model were rebuilt without each
 discovery cohort. Bars show regulators recovered; median correlation, in the held-out cohort, between each program's
