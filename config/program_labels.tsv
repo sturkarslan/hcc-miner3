@@ -1,4 +1,7 @@
 # Curated biology labels for MINER programs (step 09 publication figures).
+# 2026-10-01: evidence below predates the reference panel (config/reference_panel.yaml). After
+#   bash scripts/slurm/rerun_reference_panel.sh, compare with results/07_post/figures/program_labels_proposed.tsv
+#   (panel-first labels with evidence) and update; prefer recent signatures where they fit as well as the classics.
 # Evidence = best signature by activity correlation (07b, per-sample global mean regressed out; hepatoblastoma
 # sets excluded) and top regulators (05 regulon families). A label names the dominant signal, not every gene.
 # Programs without strong evidence (best |r| < ~0.7) are named by regulators.

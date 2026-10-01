@@ -12,8 +12,10 @@ Figure 2  Risk and validation
   d cross-cohort KM (discovery)         e external KM
   f HR per SD, all cohorts + pooled    g C-index vs known signatures     h leave-one-cohort-out (placeholder)
 
-Labels: programs from config/program_labels.tsv (curated, with evidence); published classes and signatures by
-their biology (class code as a small grey tag). Outputs: results/09_figures/figure{1,2}.{pdf,png}, source tables.
+Labels: programs from config/program_labels.tsv (curated, with evidence); published classes, signatures, biology
+blocks and the known-signature benchmark from the reference panel (config/reference_panel.yaml: recent
+classifications first - Montironi 2023, Haber 2023, Zhu 2022, Gao 2019, Sia 2017, Désert 2017 - with the
+2007-2009 classes as references), shown by their biology (class code / source as a small grey tag). Outputs: results/09_figures/figure{1,2}.{pdf,png}, source tables.
 """
 
 import argparse
@@ -26,6 +28,7 @@ import pandas as pd
 from scipy import stats
 
 from hcc_common import load_params, miner_id_backmap, p, setup_logging
+from hcc_panel import Panel
 
 import matplotlib
 matplotlib.use("Agg")
@@ -53,49 +56,18 @@ plt.rcParams.update({
 ADV, PROT = Q.SLOTS[7], Q.SLOTS[0]          # adverse red / protective blue, everywhere
 COH = Q.cohort_colors(["TCGA", "CLCA", "LICA_FR"])
 EXT_COL = {"GSE14520": Q.SLOTS[3], "LIRI_JP": Q.SLOTS[4], "GSE76427": Q.SLOTS[6]}
-BLOCK_COL = {"Proliferation / progenitor": ADV, "Differentiated / WNT": PROT, "Immune / stromal": Q.SLOTS[2]}
+PN = Panel()   # reference signature panel (config/reference_panel.yaml)
+_BCOL = {"adverse": ADV, "protective": PROT, "immune": Q.SLOTS[2]}
+BLOCK_COL = {b: _BCOL.get(spec.get("colour"), Q.MUTED) for b, spec in PN.blocks.items()}
+AXIS_COL = {"proliferation": ADV, "wnt": PROT, "immune": Q.SLOTS[2], "other": Q.MUTED}
+MODEL_COL = {"background": Q.BACKGROUND, "muted": Q.MUTED, "slot2": Q.SLOTS[2], "slot3": Q.SLOTS[3],
+             "slot4": Q.SLOTS[4], "slot5": Q.SLOTS[5], "slot6": Q.SLOTS[6]}
 
-# published classes -> biology (class code kept as a grey tag)
-CLASS_BIO = {
-    ("hoshida", "S1"): "WNT/TGF-β, immune", ("hoshida", "S2"): "Proliferation, progenitor",
-    ("hoshida", "S3"): "Hepatocyte-like",
-    ("boyault", "G1"): "Progenitor, AFP-high", ("boyault", "G2"): "Proliferation, PI3K",
-    ("boyault", "G3"): "Proliferation, TP53/CIN", ("boyault", "G4"): "Heterogeneous, HNF1A",
-    ("boyault", "G5"): "WNT/β-catenin", ("boyault", "G6"): "WNT/β-catenin (strong)",
-    ("chiang", "proliferation"): "Proliferation", ("chiang", "CTNNB1"): "WNT/β-catenin",
-    ("chiang", "interferon"): "Interferon", ("chiang", "polysomy7"): "Chr 7 gain",
-    ("chiang", "unannotated"): "Unannotated",
-}
-SIG_BIO = [  # (signature, biology label, tag, group)
-    ("CHIANG_LIVER_CANCER_SUBCLASS_PROLIFERATION_UP", "Proliferation class", "Chiang", "Proliferation / progenitor"),
-    ("HALLMARK_E2F_TARGETS", "E2F targets", "H", "Proliferation / progenitor"),
-    ("HALLMARK_MYC_TARGETS_V1", "MYC targets", "H", "Proliferation / progenitor"),
-    ("HALLMARK_OXIDATIVE_PHOSPHORYLATION", "OXPHOS", "H", "Proliferation / progenitor"),
-    ("HALLMARK_MTORC1_SIGNALING", "mTORC1", "H", "Proliferation / progenitor"),
-    ("HOSHIDA_LIVER_CANCER_SUBCLASS_S2", "Proliferation, progenitor", "S2", "Proliferation / progenitor"),
-    ("YAMASHITA_LIVER_CANCER_WITH_EPCAM_UP", "EPCAM+ progenitor", "Yamashita", "Proliferation / progenitor"),
-    ("VILLANUEVA_LIVER_CANCER_KRT19_UP", "KRT19+ progenitor", "Villanueva", "Proliferation / progenitor"),
-    ("DESERT_STEM_CELL_HEPATOCELLULAR_CARCINOMA_SUBCLASS_UP", "Stem-like HCC", "Désert", "Proliferation / progenitor"),
-    ("KIM_LIVER_CANCER_POOR_SURVIVAL_UP", "Poor survival", "Kim", "Proliferation / progenitor"),
-    ("HOSHIDA_LIVER_CANCER_SUBCLASS_S3", "Hepatocyte-like", "S3", "Differentiated / WNT"),
-    ("CHIANG_LIVER_CANCER_SUBCLASS_CTNNB1_UP", "WNT/β-catenin class", "Chiang", "Differentiated / WNT"),
-    ("BOYAULT_LIVER_CANCER_SUBCLASS_G6_UP", "WNT/β-catenin (strong)", "G6", "Differentiated / WNT"),
-    ("DESERT_PERIVENOUS_HEPATOCELLULAR_CARCINOMA_SUBCLASS_UP", "Perivenous zonation", "Désert", "Differentiated / WNT"),
-    ("DESERT_PERIPORTAL_HEPATOCELLULAR_CARCINOMA_SUBCLASS_UP", "Periportal zonation", "Désert", "Differentiated / WNT"),
-    ("HALLMARK_BILE_ACID_METABOLISM", "Bile acid metabolism", "H", "Differentiated / WNT"),
-    ("WOO_LIVER_CANCER_RECURRENCE_DN", "Low recurrence", "Woo", "Differentiated / WNT"),
-    ("HOSHIDA_LIVER_CANCER_SUBCLASS_S1", "WNT/TGF-β, immune", "S1", "Immune / stromal"),
-    ("HALLMARK_INTERFERON_GAMMA_RESPONSE", "IFN-γ response", "H", "Immune / stromal"),
-    ("HALLMARK_ALLOGRAFT_REJECTION", "T-cell / allograft", "H", "Immune / stromal"),
-    ("HALLMARK_EPITHELIAL_MESENCHYMAL_TRANSITION", "EMT / stroma", "H", "Immune / stromal"),
-    ("HALLMARK_ANGIOGENESIS", "Angiogenesis", "H", "Immune / stromal"),
-]
-ANCHORS = {"Proliferation / progenitor": ["CHIANG_LIVER_CANCER_SUBCLASS_PROLIFERATION_UP", "HALLMARK_E2F_TARGETS",
-                                          "HOSHIDA_LIVER_CANCER_SUBCLASS_S2", "YAMASHITA_LIVER_CANCER_WITH_EPCAM_UP"],
-           "Differentiated / WNT": ["HOSHIDA_LIVER_CANCER_SUBCLASS_S3", "CHIANG_LIVER_CANCER_SUBCLASS_CTNNB1_UP",
-                                    "DESERT_PERIVENOUS_HEPATOCELLULAR_CARCINOMA_SUBCLASS_UP", "HALLMARK_BILE_ACID_METABOLISM"],
-           "Immune / stromal": ["HOSHIDA_LIVER_CANCER_SUBCLASS_S1", "HALLMARK_INTERFERON_GAMMA_RESPONSE",
-                                "HALLMARK_ALLOGRAFT_REJECTION", "HALLMARK_EPITHELIAL_MESENCHYMAL_TRANSITION"]}
+
+def class_tag(key, level):
+    """Small grey tag next to a class label: the class code, or the source when the code is the label."""
+    lab = PN.class_label(key, level)
+    return str(level) if str(level).lower() not in lab.lower() else PN.class_title(key).split(" (")[-1].rstrip(")")
 
 
 def _module(name, fname):
@@ -135,8 +107,7 @@ def load_all(P, log):
     D["diff"] = over - under
     D["cor"] = pd.read_csv(os.path.join(res, "07_post", "subtype_mapping", "subtypes_filtered",
                                         "program_signature_correlation.tsv"), sep="\t", index_col=0).rename(index=str)
-    D["ntp"] = {cl: pd.read_csv(os.path.join(res, "07_post", "subtype_mapping", "subtypes_filtered", f"ntp_calls_{cl}.tsv"),
-                                sep="\t", index_col=0)["call"] for cl in ("hoshida", "boyault", "chiang")}
+    D["ntp"] = PN.class_calls(os.path.join(res, "07_post", "subtype_mapping", "subtypes_filtered"), D["samples"])
     D["genomic"] = pd.read_csv(os.path.join(res, "03_genomics_clinical", "genomic_features.csv"), index_col=0)
     rdir = os.path.join(res, "06_risk", mx)
     D["weights"] = pd.read_csv(os.path.join(rdir, "predictor_ridge_programs_TCGA_RFS_h36m", "weights.tsv"), sep="\t",
@@ -151,12 +122,7 @@ def load_all(P, log):
     lab = pd.read_csv(p("config/program_labels.tsv"), sep="\t", comment="#", dtype={"program": str}).set_index("program")
     D["plabel"] = lab["label"].to_dict()
     # biology block per program: anchor signature group with the highest mean activity r (>= 0.3), else other
-    blk = {}
-    for k in D["cor"].index:
-        m = {g: D["cor"].loc[k, [s for s in sigs if s in D["cor"].columns]].mean() for g, sigs in ANCHORS.items()}
-        g, v = max(m.items(), key=lambda kv: kv[1])
-        blk[k] = g if v >= 0.3 else "Other"
-    D["block"] = pd.Series(blk)
+    D["block"] = pd.Series({k: PN.block_of_program(D["cor"].loc[k]) for k in D["cor"].index})
     log.info("Program blocks: %s", D["block"].value_counts().to_dict())
     return D
 
@@ -273,10 +239,11 @@ def f1c_map(fig, sub, D):
     M = M0.loc[p_order, s_order]
     rz = pd.Series({s: D["risk"].reindex(D["states"][s]).mean() for s in s_order})
     tracks = []
-    for cl, lv in (("hoshida", ["S1", "S2", "S3"]), ("boyault", ["G1", "G3", "G5", "G6"]),
-                   ("chiang", ["proliferation", "CTNNB1", "interferon"])):
+    for cl, lv in PN.figures["fig1c_tracks"]:
+        if cl not in D["ntp"]:
+            continue
         T = frac_table(D["states"], D["ntp"][cl], lv)[s_order]
-        T.index = [f"{CLASS_BIO[(cl, l)]}|{l if cl != 'chiang' else 'C'}" for l in lv]
+        T.index = [f"{PN.class_label(cl, l)}|{class_tag(cl, l)}" for l in lv]
         tracks.append(T)
     G = D["genomic"]
     mut = pd.DataFrame({s: [G.loc[m, [x for x in D["states"][s] if x in G.columns]].mean()
@@ -355,14 +322,15 @@ def f1d_signatures(ax, D):
     ks = [k for k in D["plabel"] if k in D["cor"].index]
     ks = sorted(ks, key=lambda k: (list(BLOCK_COL).index(D["block"][k]) if D["block"][k] in BLOCK_COL else 9,
                                    -D["weights"].get(k, 0)))
-    sigs = [s for s, *_ in SIG_BIO if s in D["cor"].columns]
+    panel = PN.signatures(available=set(D["cor"].columns))
+    sigs = [x["set"] for x in panel]
     C = D["cor"].loc[ks, sigs]
     im = ax.imshow(C.values, aspect="auto", cmap=Q.DIV, vmin=-1, vmax=1, interpolation="none")
     ax.set_yticks(range(len(ks)))
     ax.set_yticklabels([plab(D, k) for k in ks], fontsize=4.6)
     for t, k in zip(ax.get_yticklabels(), ks):
         t.set_color(ADV if D["weights"].get(k, 0) > 0 else PROT)
-    info = {s: (lab, tag, g) for s, lab, tag, g in SIG_BIO}
+    info = {x["set"]: (x["label"], x["tag"], x["block"]) for x in panel}
     ax.set_xticks(range(len(sigs)))
     ax.set_xticklabels([f"{info[s][0]} ({info[s][1]})" for s in sigs], fontsize=4.6, rotation=60, ha="right",
                        rotation_mode="anchor")
@@ -379,7 +347,7 @@ def f1d_signatures(ax, D):
     for i in range(1, len(bk)):
         if bk[i] != bk[i - 1]:
             ax.axhline(i - 0.5, color="white", lw=1.2)
-    ax.set_title("What the programs are (activity r with known signatures)", pad=9)
+    ax.set_title("What the programs are (activity r with reference signatures)", pad=9)
     cax = ax.inset_axes([0.78, 1.035, 0.22, 0.018])
     cb = plt.colorbar(im, cax=cax, orientation="horizontal")
     cb.ax.tick_params(labelsize=4.2, length=1.5, width=0.3)
@@ -600,12 +568,10 @@ def f2a_weights(ax, D, n=8):
 
 
 def f2b_classes(fig, sub, D):
-    S = D["samples"]
     risk = D["risk"]
-    panels = [("hoshida", D["ntp"]["hoshida"], ["S2", "S1", "S3"], "Hoshida (NTP)"),
-              ("boyault", S["boyault"], ["G3", "G1", "G2", "G6", "G5", "G4"], "Boyault (LICA-FR authors)"),
-              ("chiang", D["ntp"]["chiang"], ["proliferation", "interferon", "CTNNB1"], "Chiang (NTP)")]
-    gs = gridspec.GridSpecFromSubplotSpec(1, 3, subplot_spec=sub, wspace=0.12, width_ratios=[3, 6, 3])
+    panels = [(cl, D["ntp"][cl], lv, PN.class_title(cl)) for cl, lv in PN.figures["fig2b_panels"] if cl in D["ntp"]]
+    gs = gridspec.GridSpecFromSubplotSpec(1, len(panels), subplot_spec=sub, wspace=0.12,
+                                          width_ratios=[max(3, len(lv)) for _, _, lv, _ in panels])
     rng = np.random.default_rng(0)
     axes = []
     for j, (cl, lab, levels, name) in enumerate(panels):
@@ -614,16 +580,16 @@ def f2b_classes(fig, sub, D):
         lab = lab.reindex(risk.index)
         groups = [risk[lab == lv].dropna() for lv in levels]
         for i, g in enumerate(groups):
-            b = CLASS_BIO[(cl, lv := levels[i])]
-            col = ADV if "Prolif" in b or "Progenitor" in b else (PROT if ("WNT" in b or "Hepatocyte" in b or "HNF1A" in b) else Q.SLOTS[2])
+            col = AXIS_COL.get(PN.class_axis(cl, levels[i]), Q.MUTED)
             ax.scatter(i + rng.uniform(-0.25, 0.25, len(g)), g, s=1.2, color=col, alpha=0.45, lw=0)
             if len(g):
                 q1, md, q3 = np.percentile(g, [25, 50, 75])
                 ax.plot([i, i], [q1, q3], color=Q.INK, lw=1.2)
                 ax.plot([i - 0.28, i + 0.28], [md, md], color=Q.INK, lw=1.0)
-        pk = stats.kruskal(*[g for g in groups if len(g) >= 3]).pvalue
+        ok = [g for g in groups if len(g) >= 3]
+        pk = stats.kruskal(*ok).pvalue if len(ok) >= 2 else np.nan
         ax.set_xticks(range(len(levels)))
-        ax.set_xticklabels([f"{CLASS_BIO[(cl, lv)]}" for lv in levels], fontsize=4.4, rotation=45, ha="right",
+        ax.set_xticklabels([PN.class_label(cl, lv) for lv in levels], fontsize=4.4, rotation=45, ha="right",
                            rotation_mode="anchor")
         ax.set_title(f"{name} · P = {pk:.0e}".replace("e-0", "e-"), fontsize=5.0)
         ax.axhline(0, color=Q.AXIS, lw=0.4)
@@ -641,10 +607,11 @@ def f2c_states(fig, sub, D, m07c, P):
     s_order = st.sort_values().index.tolist()
     guan = pd.concat([m07c.guan_rank(D["surv"][(c, "RFS")]) for c in ("TCGA", "CLCA")])
     rows, labs = [], []
-    for cl, lv in (("hoshida", "S2"), ("hoshida", "S3"), ("boyault", "G3"), ("boyault", "G6"), ("chiang", "proliferation"),
-                   ("chiang", "CTNNB1")):
+    for cl, lv in PN.figures["fig2c_rows"]:
+        if cl not in D["ntp"]:
+            continue
         rows.append(frac_table(D["states"], D["ntp"][cl], [lv]).loc[lv, s_order].values.astype(float))
-        labs.append(CLASS_BIO[(cl, lv)])
+        labs.append(f"{PN.class_label(cl, lv)} ({class_tag(cl, lv)})")
     G = D["genomic"]
     for m, lab in (("MUT_TP53", "TP53 mut"), ("MUT_CTNNB1", "CTNNB1 mut")):
         rows.append([G.loc[m, [x for x in D["states"][s] if x in G.columns]].mean() for s in s_order])
@@ -795,8 +762,8 @@ def f2g_benchmark(ax, D):
     H = pd.concat(hs)
     H["model"] = H["model"].replace({"MINER programs (ridge)": "MINER programs", "MINER programs (TCGA-trained)": "MINER programs"})
     sets = list(dict.fromkeys(H["set"]))
-    models = [("Hoshida S1/S2/S3", "Hoshida classes", Q.BACKGROUND, "o"), ("Chiang proliferation", "Proliferation signature", Q.SLOTS[3], "^"),
-              ("all known scores + global mean", "All known signatures", Q.MUTED, "s"), ("MINER programs", "MINER programs", ADV, "D")]
+    models = [(m["name"], m["name"], MODEL_COL.get(m.get("colour"), Q.MUTED), m.get("marker", "o"))
+              for m in PN.cfg.get("known_models", [])] + [("MINER programs", "MINER programs", ADV, "D")]
     y = np.arange(len(sets))
     for m, lab, col, mk in models:
         v = H[H["model"] == m].set_index("set").reindex(sets)["c_index"]
@@ -814,7 +781,7 @@ def f2g_benchmark(ax, D):
               borderaxespad=0.2)
     despine(ax)
     lr = H[(H["model"] == "MINER programs") & H["lr_p"].notna()]
-    ax.set_title(f"vs known signatures (MINER added: P ≥ {lr['lr_p'].min():.2f})", pad=17)
+    ax.set_title(f"vs published signatures (MINER added: P ≥ {lr['lr_p'].min():.2f})", pad=17)
     return H
 
 

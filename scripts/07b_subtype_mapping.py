@@ -193,6 +193,8 @@ def main():
         calls["montironi"] = mc
         mc.rename("call").to_frame().assign(cohort=samples["cohort"], ctnnb1=ctn).to_csv(
             os.path.join(outdir, "montironi_classes.tsv"), sep="\t")
+        # same file layout as the NTP classifiers, so downstream steps load every class the same way
+        mc.fillna("unassigned").rename("call").to_frame().to_csv(os.path.join(outdir, "ntp_calls_montironi.tsv"), sep="\t")
         log.info("Montironi classes (CTNNB1-unprofiled non-inflamed tumours left missing):\n%s",
                  pd.crosstab(samples["cohort"], mc.fillna("missing")).to_string())
         for lab in label_cols:

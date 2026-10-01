@@ -1,0 +1,146 @@
+# Reference signature panel: the single place that says which published signatures and classes the
+# downstream analyses and figures use (steps 07c, 08, 09; loaded by scripts/hcc_panel.py).
+#
+# Priority: recent HCC classifications (Montironi 2023, Haber 2023, Zhu 2022, Gao 2019, Sia 2017,
+# Désert 2017) first; the 2007-2009 classes (Hoshida, Boyault, Chiang) stay as labelled references so
+# results remain comparable with earlier work. Set names are exactly as in
+# results/07_post/signatures/signatures.tsv (custom sets "custom:<NAME>", their down sets
+# "custom:<NAME>_DN"). A score entry "A - B" means mean z(A) - mean z(B) (signed signatures).
+# Missing sets are skipped with a warning, so the panel runs even before all custom sets exist.
+
+# Biology blocks used to group programs (Fig 1c/1d). A program joins the block whose anchor sets have
+# the highest mean activity r (>= block_min_r); otherwise "Other".
+block_min_r: 0.3
+blocks:
+  Proliferation / progenitor:
+    colour: adverse
+    anchors: [HALLMARK_E2F_TARGETS, custom:GAO2019_TP53MUT_PROTEIN, custom:GAO2019_PYCR2_ASSOC_MRNA,
+              DESERT_STEM_CELL_HEPATOCELLULAR_CARCINOMA_SUBCLASS_UP]
+  Differentiated / WNT:
+    colour: protective
+    anchors: [custom:MONTIRONI2023_WNT_ACTIVATION, custom:GAO2019_CTNNB1MUT_PROTEIN,
+              custom:GAO2019_ADH1A_ASSOC_MRNA, DESERT_PERIVENOUS_HEPATOCELLULAR_CARCINOMA_SUBCLASS_UP]
+  Immune / stromal:
+    colour: immune
+    anchors: [custom:MONTIRONI2023_INFLAMED, custom:SIA2017_IMMUNE_CLASS_UP, custom:HABER2023_IFNAP,
+              HALLMARK_EPITHELIAL_MESENCHYMAL_TRANSITION]
+
+# Signatures shown against programs (Fig 1d; 07c f4) and preferred for program labels.
+# block: which biology block the column sits in; group: 07c f4 grouping; year: shown in the tag.
+signatures:
+  # ---- proliferation / progenitor / poor prognosis
+  - {set: HALLMARK_E2F_TARGETS, label: E2F targets, tag: H, block: Proliferation / progenitor, group: Hallmarks}
+  - {set: HALLMARK_MYC_TARGETS_V1, label: MYC targets, tag: H, block: Proliferation / progenitor, group: Hallmarks}
+  - {set: HALLMARK_MTORC1_SIGNALING, label: mTORC1, tag: H, block: Proliferation / progenitor, group: Hallmarks}
+  - {set: custom:GAO2019_TP53MUT_PROTEIN, label: TP53-mutant proteome, tag: Gao 2019, block: Proliferation / progenitor, group: Proteogenomic (Gao 2019)}
+  - {set: custom:GAO2019_PYCR2_ASSOC_MRNA, label: PYCR2 axis (poor prognosis), tag: Gao 2019, block: Proliferation / progenitor, group: Proteogenomic (Gao 2019)}
+  - {set: DESERT_STEM_CELL_HEPATOCELLULAR_CARCINOMA_SUBCLASS_UP, label: Stem-like HCC, tag: Désert 2017, block: Proliferation / progenitor, group: Zonation classes (Désert 2017)}
+  - {set: DESERT_EXTRACELLULAR_MATRIX_HEPATOCELLULAR_CARCINOMA_SUBCLASS_UP, label: ECM HCC, tag: Désert 2017, block: Proliferation / progenitor, group: Zonation classes (Désert 2017)}
+  - {set: HOSHIDA_LIVER_CANCER_SUBCLASS_S2, label: Proliferation/progenitor class, tag: S2 2009, block: Proliferation / progenitor, group: Reference classes (2007-2009)}
+  - {set: VILLANUEVA_LIVER_CANCER_KRT19_UP, label: KRT19+ progenitor, tag: 2011, block: Proliferation / progenitor, group: Reference classes (2007-2009)}
+  # ---- differentiated / WNT / zonation / good prognosis
+  - {set: custom:MONTIRONI2023_WNT_ACTIVATION, label: WNT/β-catenin activation, tag: Montironi 2023, block: Differentiated / WNT, group: Immune & WNT classes (2017-2023)}
+  - {set: custom:GAO2019_CTNNB1MUT_PROTEIN, label: CTNNB1-mutant proteome, tag: Gao 2019, block: Differentiated / WNT, group: Proteogenomic (Gao 2019)}
+  - {set: custom:GAO2019_ADH1A_ASSOC_MRNA, label: ADH1A axis (good prognosis), tag: Gao 2019, block: Differentiated / WNT, group: Proteogenomic (Gao 2019)}
+  - {set: DESERT_PERIVENOUS_HEPATOCELLULAR_CARCINOMA_SUBCLASS_UP, label: Perivenous zonation, tag: Désert 2017, block: Differentiated / WNT, group: Zonation classes (Désert 2017)}
+  - {set: DESERT_PERIPORTAL_HEPATOCELLULAR_CARCINOMA_SUBCLASS_UP, label: Periportal zonation, tag: Désert 2017, block: Differentiated / WNT, group: Zonation classes (Désert 2017)}
+  - {set: HALLMARK_BILE_ACID_METABOLISM, label: Bile acid metabolism, tag: H, block: Differentiated / WNT, group: Hallmarks}
+  - {set: HOSHIDA_LIVER_CANCER_SUBCLASS_S3, label: Hepatocyte-like class, tag: S3 2009, block: Differentiated / WNT, group: Reference classes (2007-2009)}
+  - {set: CHIANG_LIVER_CANCER_SUBCLASS_CTNNB1_UP, label: CTNNB1 class, tag: Chiang 2008, block: Differentiated / WNT, group: Reference classes (2007-2009)}
+  # ---- immune / stromal / immunotherapy response
+  - {set: custom:MONTIRONI2023_INFLAMED, label: Inflamed (20 genes), tag: Montironi 2023, block: Immune / stromal, group: Immune & WNT classes (2017-2023)}
+  - {set: custom:SIA2017_IMMUNE_CLASS_UP, label: Immune class, tag: Sia 2017, block: Immune / stromal, group: Immune & WNT classes (2017-2023)}
+  - {set: custom:HABER2023_IFNAP, label: IFNAP (anti-PD-1 response), tag: Haber 2023, block: Immune / stromal, group: Immunotherapy response}
+  - {set: custom:ZHU2022_ABRS, label: ABRS (atezo-bev response), tag: Zhu 2022, block: Immune / stromal, group: Immunotherapy response}
+  - {set: custom:HABER2023_S6_POPLAR, label: T-effector (POPLAR), tag: Haber S6, block: Immune / stromal, group: Immunotherapy response}
+  - {set: custom:HABER2023_S6_AYERS1_IFN, label: IFN-γ (Ayers), tag: Haber S6, block: Immune / stromal, group: Immunotherapy response}
+  - {set: custom:HABER2023_S6_TLS_NAT_IMMUNOL_FINKIN, label: Tertiary lymphoid structures, tag: Finkin, block: Immune / stromal, group: Immune cells (Bindea 2013 via Haber)}
+  - {set: custom:HABER2023_S6_CD8_T_CELLS, label: CD8 T cells, tag: Bindea, block: Immune / stromal, group: Immune cells (Bindea 2013 via Haber)}
+  - {set: custom:HABER2023_S6_B_CELLS, label: B cells, tag: Bindea, block: Immune / stromal, group: Immune cells (Bindea 2013 via Haber)}
+  - {set: custom:HABER2023_S6_MACROPHAGES, label: Macrophages, tag: Bindea, block: Immune / stromal, group: Immune cells (Bindea 2013 via Haber)}
+  - {set: custom:HABER2023_S6_MDSC, label: MDSC, tag: Haber S6, block: Immune / stromal, group: Immune cells (Bindea 2013 via Haber)}
+  - {set: custom:HABER2023_S6_WNTTGF, label: WNT/TGF-β (Lachenmayer), tag: 2012, block: Immune / stromal, group: Immune & WNT classes (2017-2023)}
+  - {set: HALLMARK_EPITHELIAL_MESENCHYMAL_TRANSITION, label: EMT / stroma, tag: H, block: Immune / stromal, group: Hallmarks}
+  - {set: HALLMARK_ANGIOGENESIS, label: Angiogenesis, tag: H, block: Immune / stromal, group: Hallmarks}
+  - {set: HOSHIDA_LIVER_CANCER_SUBCLASS_S1, label: WNT/TGF-β immune class, tag: S1 2009, block: Immune / stromal, group: Reference classes (2007-2009)}
+
+# Sample-level classes (07b NTP calls: ntp_calls_<key>.tsv; source: label = LICA-FR author column).
+# levels: class code -> [biology label, axis] with axis in proliferation / wnt / immune / other
+# (axis sets the colour in Fig 2b).
+classifiers:
+  montironi:
+    title: Immune classes (Montironi 2023)
+    levels: {Immune: [Immune (inflamed), immune], Immune-like: [Immune-like (inflamed), immune],
+             Intermediate: [Intermediate, other], Excluded: [Excluded (CTNNB1), wnt]}
+  sia:
+    title: Immune class (Sia 2017)
+    levels: {immune: [Immune class, immune], rest: [Non-immune, other]}
+  wnt_activation:
+    title: WNT activation (Lachenmayer/Montironi)
+    levels: {active: [WNT active, wnt], inactive: [WNT inactive, other]}
+  hoshida:
+    title: Hoshida 2009 (reference)
+    levels: {S1: ["WNT/TGF-β, immune", immune], S2: ["Proliferation, progenitor", proliferation],
+             S3: [Hepatocyte-like, wnt]}
+  boyault:
+    title: Boyault 2007 (reference)
+    levels: {G1: ["Progenitor, AFP-high", proliferation], G2: ["Proliferation, PI3K", proliferation],
+             G3: ["Proliferation, TP53/CIN", proliferation], G5: [WNT/β-catenin, wnt],
+             G6: [WNT/β-catenin (strong), wnt]}
+  chiang:
+    title: Chiang 2008 (reference)
+    levels: {proliferation: [Proliferation, proliferation], CTNNB1: [WNT/β-catenin, wnt],
+             interferon: [Interferon, immune], polysomy7: [Chr 7 gain, other], unannotated: [Unannotated, other]}
+  boyault_authors:
+    title: Boyault (LICA-FR authors)
+    source: label
+    column: boyault
+    levels: {G1: ["Progenitor, AFP-high", proliferation], G2: ["Proliferation, PI3K", proliferation],
+             G3: ["Proliferation, TP53/CIN", proliferation], G4: ["Heterogeneous, HNF1A", other],
+             G5: [WNT/β-catenin, wnt], G6: [WNT/β-catenin (strong), wnt]}
+
+# Which classes each figure shows (classifier key, levels in display order).
+figures:
+  fig1c_tracks:        # Fig 1c class-composition tracks above the program x state map
+    - [montironi, [Immune, Immune-like, Excluded]]
+    - [hoshida, [S1, S2, S3]]
+    - [boyault, [G1, G3, G5, G6]]
+  fig2b_panels:        # Fig 2b risk score by class
+    - [montironi, [Immune, Immune-like, Intermediate, Excluded]]
+    - [hoshida, [S2, S1, S3]]
+    - [boyault_authors, [G3, G1, G2, G6, G5, G4]]
+  fig2c_rows:          # Fig 2c state composition rows (classifier, level)
+    - [montironi, Immune]
+    - [montironi, Excluded]
+    - [hoshida, S2]
+    - [hoshida, S3]
+    - [boyault, G3]
+    - [boyault, G6]
+  f07c_tracks: [montironi, sia, wnt_activation, hoshida, boyault, chiang, boyault_authors]   # 07c f1/f3/f5/f7
+
+# Known-signature covariates for "prognosis beyond known subtypes" (07c f6, 08): each scored per
+# sample (mean z, per-sample global mean regressed out), plus the global mean itself.
+adjust_signatures:
+  - custom:MONTIRONI2023_INFLAMED
+  - custom:SIA2017_IMMUNE_CLASS_UP
+  - custom:HABER2023_IFNAP
+  - custom:MONTIRONI2023_WNT_ACTIVATION - custom:MONTIRONI2023_WNT_ACTIVATION_DN
+  - custom:GAO2019_PYCR2_ASSOC_MRNA - custom:GAO2019_PYCR2_ASSOC_MRNA_DN
+  - custom:GAO2019_ADH1A_ASSOC_MRNA - custom:GAO2019_ADH1A_ASSOC_MRNA_DN
+  - custom:GAO2019_TP53MUT_PROTEIN - custom:GAO2019_TP53MUT_PROTEIN_DN
+  - DESERT_STEM_CELL_HEPATOCELLULAR_CARCINOMA_SUBCLASS_UP
+  - HOSHIDA_LIVER_CANCER_SUBCLASS_S1
+  - HOSHIDA_LIVER_CANCER_SUBCLASS_S2
+  - HOSHIDA_LIVER_CANCER_SUBCLASS_S3
+  - CHIANG_LIVER_CANCER_SUBCLASS_PROLIFERATION_UP
+  - CHIANG_LIVER_CANCER_SUBCLASS_CTNNB1_UP
+  - VILLANUEVA_LIVER_CANCER_KRT19_UP
+
+# Head-to-head prognostic models (07c f6b, 08, Fig 2g): Cox on these scores, trained in one cohort,
+# tested in another. "all" = every adjust_signatures score + global mean.
+known_models:
+  - {name: Hoshida classes (2009), sets: [HOSHIDA_LIVER_CANCER_SUBCLASS_S1, HOSHIDA_LIVER_CANCER_SUBCLASS_S2, HOSHIDA_LIVER_CANCER_SUBCLASS_S3], marker: o, colour: background}
+  - {name: Proliferation (Chiang 2008), sets: [CHIANG_LIVER_CANCER_SUBCLASS_PROLIFERATION_UP], marker: "^", colour: slot3}
+  - {name: Immune & WNT classes (2017-2023), sets: [custom:MONTIRONI2023_INFLAMED, custom:SIA2017_IMMUNE_CLASS_UP, custom:HABER2023_IFNAP, "custom:MONTIRONI2023_WNT_ACTIVATION - custom:MONTIRONI2023_WNT_ACTIVATION_DN"], marker: v, colour: slot2}
+  - {name: Proteogenomic prognosis (Gao 2019), sets: ["custom:GAO2019_PYCR2_ASSOC_MRNA - custom:GAO2019_PYCR2_ASSOC_MRNA_DN", "custom:GAO2019_ADH1A_ASSOC_MRNA - custom:GAO2019_ADH1A_ASSOC_MRNA_DN"], marker: P, colour: slot4}
+  - {name: All published signatures, sets: all, marker: s, colour: muted}

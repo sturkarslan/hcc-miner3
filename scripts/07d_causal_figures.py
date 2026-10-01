@@ -270,14 +270,25 @@ def main():
     written = []
     rho, pv = fig_driver_program(hc, fams[fams["Mutation"].isin(feats)], prog, drv, outdir, R, written)
     log.info("Net risk push vs observed recurrence association: Spearman rho %.2f, p %.1e", rho, pv)
-    # program labels: best HCC-class / prognostic / hallmark signature by activity r (07b, global mean regressed
+    # program labels: signature by activity r (07b, global mean regressed
     # out); hepatoblastoma sets are excluded because they mostly restate the proliferation axis
     cor = pd.read_csv(os.path.join(res, "07_post", "subtype_mapping", P["post"]["subtypes_dir"],
                                    "program_signature_correlation.tsv"), sep="\t", index_col=0)
     cor.index = cor.index.astype(str)
     cor = cor[[c for c in cor.columns if "HEPATOBLAST" not in c]]
-    best = cor.abs().idxmax(axis=1)
-    prog_label = {k: f"{short_sig(b)} (r {cor.loc[k, b]:.2f})" for k, b in best.items()}
+    # prefer the reference panel (config/reference_panel.yaml; recent classifications first) when it matches
+    # with |r| >= 0.5, otherwise the best signature overall
+    from hcc_panel import Panel
+    PN = Panel(log=log)
+    pset = [x["set"] for x in PN.signatures(available=set(cor.columns))]
+    prog_label = {}
+    for k in cor.index:
+        bp = cor.loc[k, pset].abs().idxmax() if pset else None
+        if bp is not None and abs(cor.loc[k, bp]) >= 0.5:
+            prog_label[k] = f"{PN.label(bp)} (r {cor.loc[k, bp]:.2f})"
+        else:
+            b_ = cor.loc[k].abs().idxmax()
+            prog_label[k] = f"{short_sig(b_)} (r {cor.loc[k, b_]:.2f})"
     edges = fig_flows(fams, prog, prog_label, [d for d in R["flow_drivers"] if d in set(fams["Mutation"])], outdir,
                       R, written, log)
     edges.to_csv(os.path.join(outdir, "causal_flow_edges.tsv"), sep="\t", index=False, float_format="%.4g")

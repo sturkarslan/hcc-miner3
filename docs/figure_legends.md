@@ -5,6 +5,14 @@ embedded as TrueType). Source data: `figure1_source_data.xlsx`, `figure2_source_
 `scripts/09_publication_figures.py` from saved results only; program names from `config/program_labels.tsv`
 (each with its evidence).
 
+> **Pending re-run (2026-10-01).** Published classes and signatures now come from the reference panel
+> (`config/reference_panel.yaml`): Montironi 2023 immune classes, Sia 2017 immune class, Haber 2023 IFNAP,
+> Zhu 2022 ABRS, Gao 2019 proteogenomic axes, Désert 2017 zonation classes and immune-cell sets first, with
+> Hoshida 2009 / Boyault 2007 / Chiang 2008 kept as references. The NTP null distribution was also corrected
+> (step 07b). Panel descriptions below are updated; **numbers and the narrative claims about classes and the
+> head-to-head comparison are from the previous run** and must be refreshed after
+> `bash scripts/slurm/rerun_reference_panel.sh` and curation of `config/program_labels.tsv`.
+
 ---
 
 ## Figure 1
@@ -40,11 +48,16 @@ external cohorts (GSE14520, n = 221; LIRI-JP, n = 203; GSE76427, n = 115) with f
 **b**, Network size at each level (log scale).
 **c**, Mean regulon dysregulation (over- minus under-expressed membership) of each program (rows) in each state
 (columns). States are hierarchically clustered (average linkage, correlation distance); programs are grouped into
-biology blocks. Tracks: mean risk score per state; fraction of tumours in published HCC classes by nearest-template
-prediction, labelled by biology (class codes in grey: Hoshida S1–S3, Boyault G1–G6, Chiang (C)); mutation frequencies.
-**d**, Pearson correlation across tumours between program activity and published signature scores, with each tumour's
-mean expression regressed out of both. Program names are coloured by the sign of their risk-model weight (red adverse,
-blue protective). H, MSigDB hallmark.
+biology blocks (anchored on the reference panel: proliferation/progenitor, differentiated/WNT, immune/stromal).
+Tracks: mean risk score per state; fraction of tumours in published HCC classes, labelled by biology with the class
+code or source in grey: Montironi 2023 immune classes (Inflamed 20-gene signature by nearest-template prediction, then
+Sia 2017 immune class within inflamed tumours and CTNNB1 mutation within non-inflamed tumours), and the reference
+Hoshida S1–S3 and Boyault G1–G6 classes by nearest-template prediction; mutation frequencies.
+**d**, Pearson correlation across tumours between program activity and reference-panel signature scores (immune and
+immunotherapy-response signatures from Montironi 2023, Sia 2017, Haber 2023 and Zhu 2022; WNT/β-catenin activation;
+Gao 2019 proteogenomic axes; Désert 2017 zonation classes; selected hallmarks; Hoshida classes as references), with
+each tumour's mean expression regressed out of both. Program names are coloured by the sign of their risk-model
+weight (red adverse, blue protective). Tags give the source; H, MSigDB hallmark.
 **e**, Causal flows from CTNNB1 mutation (n = 222 tumours) to regulators and programs: the regulators with the largest
 effects (one per regulon family) plus LEF1 and TCF7. Edges: red, up in mutant tumours; blue, down; dashed, the
 regulator represses its regulon; width proportional to |Cohen's d|. Flows shown are high confidence: Benjamini–Hochberg
@@ -80,8 +93,8 @@ unseen cohort.
 
 **Fig. 2 | Program-based risk, its biology and its validation.**
 **a**, Largest adverse (red) and protective (blue) weights of the ridge model trained on TCGA recurrence.
-**b**, Risk score (within-cohort z) by published HCC class, labelled by biology. Hoshida and Chiang classes are
-nearest-template-prediction calls (all 929 tumours); Boyault classes are the LICA-FR authors' labels (n = 324).
+**b**, Risk score (within-cohort z) by published HCC class, labelled by biology: Montironi 2023 immune classes and
+Hoshida classes (calls for all 929 tumours, as in Fig. 1c), and the LICA-FR authors' Boyault labels (n = 324).
 Bars, median and interquartile range; Kruskal–Wallis P.
 **c**, States ordered by mean risk score. Top, class and mutation fractions; middle, risk score; bottom, observed recurrence as GuanRank computed within each cohort (TCGA and CLCA; 1,
 earliest event). Boxes, median and interquartile range; whiskers, 1.5× interquartile range. State mean risk versus
@@ -92,8 +105,10 @@ pre-specified TCGA-trained models, never refit. C, Harrell's C-index; HR, Cox ha
 **f**, Cox hazard ratio per s.d. of risk score (95% confidence interval) in every test cohort, with random-effects
 (DerSimonian–Laird) pooled estimates over external cohorts.
 **g**, C-index of the network model compared with Cox models on published signature scores, trained in the same cohort:
-Hoshida classes; Chiang proliferation signature; all known scores (Hoshida S1–S3, proliferation, CTNNB1, KRT19, stem
-cell and tumour mean expression). Adding the network score to all known scores: likelihood-ratio P ≥ 0.10 in every
+Hoshida classes (2009); Chiang proliferation signature (2008); immune and WNT classes (Montironi 2023 Inflamed,
+Sia 2017 immune class, Haber 2023 IFNAP, WNT/β-catenin activation); Gao 2019 proteogenomic prognosis axes (PYCR2,
+ADH1A); and all published scores together (also TP53-mutant proteome, Désert stem-like, Hoshida S1–S3, Chiang
+proliferation and CTNNB1, KRT19, plus tumour mean expression). Adding the network score to all known scores: likelihood-ratio P ≥ 0.10 in every
 cohort.
 **h**, Leave-one-cohort-out stability: the network, causal inference and risk model were rebuilt without each
 discovery cohort. Bars show regulators recovered; median correlation, in the held-out cohort, between each program's

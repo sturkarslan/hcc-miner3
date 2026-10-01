@@ -53,8 +53,27 @@ sbatch scripts/slurm/07b_subtype_mapping.sbatch      # NTP subtype calls, state/
 ```
 
 Subtype signatures are configured in `config/subtype_signatures.yaml` (MSigDB set-name patterns and NTP
-classifiers) and `config/subtype_signatures_custom.tsv` (signatures not in MSigDB, filled from the papers'
-supplementary tables).
+classifiers) and `config/subtype_signatures_custom.tsv` (signatures not in MSigDB, extracted from the papers'
+supplementary tables by `scripts/tools/extract_*_signatures.py`: Gao 2019, Zhu 2022, Montironi 2023, Sia 2017,
+Haber 2023).
+
+### Reference signature panel
+
+`config/reference_panel.yaml` (read by `scripts/hcc_panel.py`) is the single place that says which published
+signatures and classes the downstream analyses and figures use: biology blocks and their anchor signatures,
+signatures shown against programs, sample classes shown in each figure, the known-signature covariates for
+"prognosis beyond known subtypes", and the head-to-head benchmark models. Recent classifications come first
+(Montironi 2023, Haber 2023, Zhu 2022, Gao 2019, Sia 2017, Désert 2017); Hoshida 2009, Boyault 2007 and
+Chiang 2008 are kept as references. Steps 07c, 07d, 08 and 09 use it; missing sets are skipped with a warning.
+
+After changing the custom signatures or the panel, re-run every dependent step in order:
+
+```
+bash scripts/slurm/rerun_reference_panel.sh   # 07a -> 07b -> 07c -> 07d + 08 -> 09
+```
+
+Then review `results/07_post/figures/program_labels_proposed.tsv` (labels from the panel, same format as
+`config/program_labels.tsv`), update the curated labels, and re-run step 09.
 
 Step 02 writes `results/02_batch_corrected/expression_combat_z.csv` (and `expression_cohort_z_z.csv` for
 comparison), genes × samples with Ensembl IDs, already z-scored for `miner3-coexpr --skip_tpm`.

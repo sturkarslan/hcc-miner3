@@ -198,8 +198,8 @@ def main():
                  for ep in ("RFS", "OS")}
 
     from lifelines import CoxPHFitter
-    known_sets = {"Hoshida S1/S2/S3": ["Hoshida S1", "Hoshida S2", "Hoshida S3"],
-                  "Chiang proliferation": ["Chiang Proliferation up"], "all known scores + global mean": list(KSd.columns)}
+    # known-signature models from the reference panel (config/reference_panel.yaml), as in 07c
+    known_sets = {name: cols for name, cols, *_ in m07c.PN.known_models(KSd.columns)}
     tcga_srv = {ep: pd.read_csv(os.path.join(res, "03_genomics_clinical", f"survival_TCGA_{ep}_h36m_miner.csv"),
                                 index_col=0).set_axis(["duration", "observed"], axis=1) for ep in ("RFS", "OS")}
 
@@ -226,16 +226,7 @@ def main():
             ww = w.reindex(ps.index).fillna(0)
             scores[f"risk_{m}"] = ps.fillna(0).T @ ww
         # known-subtype scores (global mean regressed out), same construction as 07c
-        gm = z.mean(0)
-        gc = gm - gm.mean()
-        KS = {}
-        for s_ in Rf["adjust_signatures"]:
-            g = sorted(set(sig.loc[sig["set"] == s_, "ensembl"]) & set(z.index))
-            if len(g) >= 5:
-                v = z.loc[g].mean()
-                KS[m07c.short(s_)] = v - gc * ((gc * (v - v.mean())).sum() / (gc ** 2).sum())
-        KS = pd.DataFrame(KS)
-        KS["global mean z"] = gm
+        KS = m07c.PN.known_scores(z, sig)
         # states: nearest discovery centroid by correlation
         common = ps.index.intersection(cent.index)
         cc = np.corrcoef(np.c_[ps.loc[common].fillna(0).values, cent.loc[common].values].T)[:ps.shape[1], ps.shape[1]:]
@@ -350,7 +341,7 @@ def figures(cohort_data, V, outdir):
     Q._save(fig, outdir, "v1_km_external.png", written)
     # v2: head-to-head C-index
     H = pd.concat([v[3] for v in cohort_data.values()])
-    order = ["Hoshida S1/S2/S3", "Chiang proliferation", "all known scores + global mean", "MINER programs (TCGA-trained)"]
+    order = [m for m in dict.fromkeys(H["model"]) if not m.startswith("MINER")] + ["MINER programs (TCGA-trained)"]
     groups = H[["cohort", "endpoint"]].drop_duplicates().values.tolist()
     fig, ax = plt.subplots(figsize=(8.5, 1.2 + 0.9 * len(order)))
     y = np.arange(len(order))

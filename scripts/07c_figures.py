@@ -3,27 +3,29 @@
 
 f1_integrated_map      programs x states (mean regulon dysregulation, over - under), both clustered
                        (average linkage, correlation distance) with dendrograms. Tracks above: state size, mean
-                       risk, cohort mix, published-subtype composition (NTP Hoshida / Boyault / Chiang,
-                       LICA-FR author labels), driver alteration frequencies. Left: risk weight and
+                       risk, cohort mix, published-class composition (reference panel f07c_tracks: Montironi 2023,
+                       Sia 2017, WNT activation, Hoshida/Boyault/Chiang as references, LICA-FR author labels),
+                       driver alteration frequencies. Left: risk weight and
                        prognostic meta-z per program. Right: top regulators and best known signature.
 f2_known_vs_new        per program: best gene-set overlap (-log10 FDR) vs best activity correlation with
                        any known signature; colour = prognostic meta-z. "New" = prognostic, no overlap at
                        FDR < 0.05 with >= min_fold, and |r| < known_r.
 f3_risk_by_subtype     risk score (within-cohort z) by published class, small multiples, per sample.
-f4_program_signatures  programs x curated HCC / prognostic / hallmark signatures, both clustered: activity r;
+f4_program_signatures  programs x reference-panel signatures (config/reference_panel.yaml), both clustered: activity r;
                        dot = direct gene overlap (FDR < 0.05, >= min_fold).
 f5_state_risk          state-level Cox z per cohort + meta-z, with each state's dominant subtype calls.
 f7_state_risk_survival states ordered by mean risk score: subtype/mutation enrichment per state (fraction,
                        dot = one-sided Fisher FDR < 0.05), risk score and within-cohort GuanRank (RFS) per state.
 f6_beyond_known_subtypes  per program: prognostic meta-z before vs after adjusting (within cohort) for known
-                       subtype scores (post.figures.adjust_signatures) and the per-sample global mean z;
+                       subtype scores (reference panel adjust_signatures) and the per-sample global mean z;
                        the risk score is tested the same way (risk_score_beyond_known.tsv). Panel b:
                        cross-cohort C-index of Cox models on known-subtype scores vs the MINER program
                        model, and the LR test of adding the MINER score (risk_head_to_head.tsv).
 
 Risk score = MINER ridge on program activity trained in TCGA (RFS, 36-month horizon; step 06). It is
 in-sample for TCGA and out-of-sample for CLCA and LICA-FR; shown as a within-cohort z.
-Tables: program_annotation.tsv, state_annotation_risk.tsv (results/07_post/figures/).
+Tables: program_annotation.tsv, state_annotation_risk.tsv, program_labels_proposed.tsv (labels from the
+reference panel, same format as config/program_labels.tsv, for curation) (results/07_post/figures/).
 """
 
 import argparse
@@ -35,6 +37,7 @@ import pandas as pd
 from scipy import stats
 
 from hcc_common import load_params, p, setup_logging
+from hcc_panel import Panel
 
 import matplotlib
 matplotlib.use("Agg")
@@ -46,43 +49,11 @@ import qc_plots as Q  # noqa: E402  (palette, rcParams, _save, cohort_colors)
 OUT = os.path.join("07_post", "figures")
 MUTS = ["MUT_CTNNB1", "MUT_AXIN1", "MUT_TP53", "TERT_promoter", "MUT_ARID1A", "MUT_ALB", "AMP_CCND1_FGF19",
         "ARM_8p_loss", "ARM_1q_gain"]
-SIG_GROUPS = {
-    "HCC classes": ["HOSHIDA_LIVER_CANCER_SUBCLASS_S1", "HOSHIDA_LIVER_CANCER_SUBCLASS_S2",
-                    "HOSHIDA_LIVER_CANCER_SUBCLASS_S3", "BOYAULT_LIVER_CANCER_SUBCLASS_G1_UP",
-                    "BOYAULT_LIVER_CANCER_SUBCLASS_G2", "BOYAULT_LIVER_CANCER_SUBCLASS_G3_UP",
-                    "BOYAULT_LIVER_CANCER_SUBCLASS_G56_UP", "BOYAULT_LIVER_CANCER_SUBCLASS_G6_UP",
-                    "CHIANG_LIVER_CANCER_SUBCLASS_CTNNB1_UP", "CHIANG_LIVER_CANCER_SUBCLASS_PROLIFERATION_UP",
-                    "CHIANG_LIVER_CANCER_SUBCLASS_INTERFERON_UP", "CHIANG_LIVER_CANCER_SUBCLASS_POLYSOMY7_UP",
-                    "CHIANG_LIVER_CANCER_SUBCLASS_UNANNOTATED_UP",
-                    "DESERT_STEM_CELL_HEPATOCELLULAR_CARCINOMA_SUBCLASS_UP",
-                    "DESERT_EXTRACELLULAR_MATRIX_HEPATOCELLULAR_CARCINOMA_SUBCLASS_UP",
-                    "DESERT_PERIPORTAL_HEPATOCELLULAR_CARCINOMA_SUBCLASS_UP",
-                    "DESERT_PERIVENOUS_HEPATOCELLULAR_CARCINOMA_SUBCLASS_UP"],
-    "Progenitor": ["YAMASHITA_LIVER_CANCER_WITH_EPCAM_UP", "ANDERSEN_LIVER_CANCER_KRT19_UP",
-                   "VILLANUEVA_LIVER_CANCER_KRT19_UP", "YAMASHITA_LIVER_CANCER_STEM_CELL_UP"],
-    "Prognosis": ["HOSHIDA_LIVER_CANCER_SURVIVAL_UP", "HOSHIDA_LIVER_CANCER_SURVIVAL_DN",
-                  "HOSHIDA_LIVER_CANCER_LATE_RECURRENCE_UP", "KIM_LIVER_CANCER_POOR_SURVIVAL_UP",
-                  "LEE_LIVER_CANCER_SURVIVAL_UP", "LEE_LIVER_CANCER_SURVIVAL_DN",
-                  "WOO_LIVER_CANCER_RECURRENCE_UP", "KUROKAWA_LIVER_CANCER_EARLY_RECURRENCE_UP",
-                  "IIZUKA_LIVER_CANCER_EARLY_RECURRENCE", "MINGUEZ_LIVER_CANCER_VASCULAR_INVASION_UP"],
-    "Hallmarks": ["HALLMARK_E2F_TARGETS", "HALLMARK_G2M_CHECKPOINT", "HALLMARK_MYC_TARGETS_V1",
-                  "HALLMARK_MTORC1_SIGNALING", "HALLMARK_OXIDATIVE_PHOSPHORYLATION", "HALLMARK_GLYCOLYSIS",
-                  "HALLMARK_HYPOXIA", "HALLMARK_WNT_BETA_CATENIN_SIGNALING", "HALLMARK_TGF_BETA_SIGNALING",
-                  "HALLMARK_EPITHELIAL_MESENCHYMAL_TRANSITION", "HALLMARK_ANGIOGENESIS",
-                  "HALLMARK_INTERFERON_GAMMA_RESPONSE", "HALLMARK_INTERFERON_ALPHA_RESPONSE",
-                  "HALLMARK_INFLAMMATORY_RESPONSE", "HALLMARK_IL6_JAK_STAT3_SIGNALING",
-                  "HALLMARK_XENOBIOTIC_METABOLISM", "HALLMARK_BILE_ACID_METABOLISM",
-                  "HALLMARK_FATTY_ACID_METABOLISM", "HALLMARK_COAGULATION", "HALLMARK_P53_PATHWAY"],
-}
+PN = Panel()   # reference signature panel (config/reference_panel.yaml): signatures, classes, known models
 
 
 def short(sig):
-    s = sig.replace("HALLMARK_", "H: ").replace("_LIVER_CANCER", "").replace("_HEPATOCELLULAR_CARCINOMA", "")
-    s = s.replace("_SUBCLASS", "").replace("LIVER_CANCER_", "").replace("_", " ")
-    return s.title().replace("H: ", "H: ").replace("Ctnnb1", "CTNNB1").replace("Epcam", "EPCAM") \
-        .replace("Krt19", "KRT19").replace("Myc", "MYC").replace("E2F", "E2F").replace("G2M", "G2M") \
-        .replace("Mtorc1", "mTORC1").replace("Tgf", "TGF").replace("Il6 Jak Stat3", "IL6-JAK-STAT3") \
-        .replace(" Up", " up").replace(" Dn", " dn").replace("Wnt Beta Catenin", "WNT/β-catenin")
+    return PN.label(sig)
 
 
 def load(P, matrix, log):
@@ -119,8 +90,7 @@ def load(P, matrix, log):
     ov = pd.read_csv(os.path.join(smap, "program_signature_overlap.tsv"), sep="\t")
     ov["program"] = ov["program"].astype(str)
     D["overlap"] = ov
-    D["ntp"] = {cl: pd.read_csv(os.path.join(smap, f"ntp_calls_{cl}.tsv"), sep="\t", index_col=0)["call"]
-                for cl in ("hoshida", "boyault", "chiang")}
+    D["ntp"] = PN.class_calls(smap, D["samples"])
     fam = pd.read_csv(os.path.join(res, "05_causal", matrix, "regulon_families.tsv"), sep="\t", index_col=0)
     fam["program"] = fam["program"].astype(str)
     D["fam"] = fam
@@ -130,23 +100,13 @@ def load(P, matrix, log):
 
 
 def known_scores(P, D, R):
-    """Per-sample scores of the known-subtype covariate signatures (mean z of their genes), each with the
-    sample's global mean z regressed out; plus the global mean itself."""
+    """Per-sample scores of the reference-panel adjust signatures (mean z of their genes; signed entries
+    "A - B" = up minus down), each with the sample's global mean z regressed out; plus the global mean itself.
+    Columns are the panel entries (display labels: PN.label)."""
     res = p(P["paths"]["results"])
     z = pd.read_csv(os.path.join(res, "02_batch_corrected", f"expression_{P['miner']['matrix']}_z.csv"), index_col=0)
     sig = pd.read_csv(os.path.join(res, "07_post", "signatures", "signatures.tsv"), sep="\t").dropna(subset=["ensembl"])
-    gm = z.mean(axis=0)
-    gc = gm - gm.mean()
-    out = {}
-    for s_ in R["adjust_signatures"]:
-        g = sorted(set(sig.loc[sig["set"] == s_, "ensembl"]) & set(z.index))
-        if len(g) < 5:
-            continue
-        v = z.loc[g].mean()
-        out[short(s_)] = v - gc * ((gc * (v - v.mean())).sum() / (gc ** 2).sum())
-    X = pd.DataFrame(out)
-    X["global mean z"] = gm
-    return X
+    return PN.known_scores(z, sig)
 
 
 def cox_adjusted(values, surv, covars, R):
@@ -222,9 +182,7 @@ def head_to_head(P, KS, R):
     from lifelines.utils import concordance_index
     res = p(P["paths"]["results"])
     surv = load_surv(P, R)
-    sets = {"Hoshida S1/S2/S3": ["Hoshida S1", "Hoshida S2", "Hoshida S3"],
-            "Chiang proliferation": ["Chiang Proliferation up"],
-            "all known scores + global mean": list(KS.columns)}
+    sets = {name: cols for name, cols, *_ in PN.known_models(KS.columns)}
     rows = []
     for tr, te in (("TCGA", "CLCA"), ("CLCA", "TCGA")):
         a, b = surv[tr], surv[te]
@@ -279,7 +237,7 @@ def fig_beyond_known(prog, adj, risk_adj, h2h, outdir, R, written):
             + "\nMINER risk score, adjusted: " + txt, transform=ax.transAxes, fontsize=6.5, color=Q.INK2, va="bottom")
     ax.legend(loc="upper left", fontsize=7)
     # b. head-to-head C-index in the external cohort
-    order = ["Hoshida S1/S2/S3", "Chiang proliferation", "all known scores + global mean", "MINER programs (ridge)"]
+    order = [m for m in dict.fromkeys(h2h["model"]) if m != "MINER programs (ridge)"] + ["MINER programs (ridge)"]
     y = np.arange(len(order))
     for j, (tr, te) in enumerate((("TCGA", "CLCA"), ("CLCA", "TCGA"))):
         h = h2h[(h2h["train"] == tr)].set_index("model").reindex(order)
@@ -314,10 +272,13 @@ def annotate_programs(D, R):
         c = D["cor"].loc[k]
         pr = D["prog_programs"].loc[k]
         regs = D["fam"].loc[D["fam"]["program"] == k, "regulator_symbol"].value_counts().index[:5]
+        cp = c[[s_["set"] for s_ in PN.signatures() if s_["set"] in c.index]]
+        bp = cp.abs().idxmax() if len(cp) else ""
         rows.append({"program": k, "n_regulons": len(D["programs"][k]), "risk_weight": D["weights"].get(k, np.nan),
                      "meta_z": pr["meta_z"], "meta_q": pr["meta_q"], "consistent": bool(pr["consistent"]),
                      "top_regulators": ",".join(regs),
                      "best_activity_signature": c.abs().idxmax(), "best_activity_r": c[c.abs().idxmax()],
+                     "best_panel_signature": bp, "best_panel_r": cp[bp] if bp else np.nan,
                      "best_overlap_signature": o["signature"].iloc[0] if len(o) else "",
                      "best_overlap_fold": o["fold_enrichment"].iloc[0] if len(o) else np.nan,
                      "best_overlap_neglog10_fdr": -np.log10(o["fdr"].iloc[0]) if len(o) else 0.0})
@@ -327,6 +288,34 @@ def annotate_programs(D, R):
     t["class"] = np.select([t["prognostic"] & ~t["known"], t["prognostic"], t["known"]],
                            ["prognostic, new", "prognostic, known", "known, not prognostic"], "other")
     return t
+
+
+def proposed_labels(prog, outdir, R, log):
+    """Program labels from the reference panel, in config/program_labels.tsv format, for curation:
+    best panel signature when |r| >= R['label_r'] (default 0.6; "low ..." when r < 0), else named by
+    the top regulators. Evidence lists the panel hit, the best signature overall and the regulators."""
+    try:
+        cur = pd.read_csv(p("config/program_labels.tsv"), sep="\t", comment="#", dtype={"program": str}) \
+            .set_index("program")["label"]
+    except FileNotFoundError:
+        cur = pd.Series(dtype=str)
+    thr = R.get("label_r", 0.6)
+    rows = []
+    for k, r in prog.iterrows():
+        bp, rp = r["best_panel_signature"], r["best_panel_r"]
+        regs = [x for x in str(r["top_regulators"]).split(",") if x][:3]
+        if bp and abs(rp) >= thr:
+            lab = PN.label(bp) if rp > 0 else "low " + PN.label(bp)
+        else:
+            lab = "/".join(regs) + " program" if regs else f"program {k}"
+        ev = (f"{PN.label(bp)} ({PN.tag(bp)}) r {rp:.2f}; " if bp else "") + \
+             f"best overall {r['best_activity_signature']} r {r['best_activity_r']:.2f}; " + "/".join(regs)
+        rows.append({"program": k, "label": lab, "evidence": ev, "current_label": cur.get(str(k), "")})
+    t = pd.DataFrame(rows)
+    t.to_csv(os.path.join(outdir, "program_labels_proposed.tsv"), sep="\t", index=False)
+    changed = (t["current_label"] != "") & (t["label"] != t["current_label"])
+    log.info("Proposed program labels (reference panel): %d programs; %d curated labels differ -> review "
+             "program_labels_proposed.tsv and update config/program_labels.tsv", len(t), int(changed.sum()))
 
 
 def state_table(D):
@@ -383,13 +372,15 @@ def fig_integrated(D, prog, st, outdir, R, written):
     p_order = [progs0[i] for i in ro]
     s_order = [states0[i] for i in co]
     M = M0.loc[p_order, s_order]
-    S = D["samples"]
     tracks = [("Cohort", pd.DataFrame({s: [st.loc[s, f"frac_{c}"] for c in ("TCGA", "CLCA", "LICA_FR")]
                                        for s in s_order}, index=["TCGA", "CLCA", "LICA-FR"]))]
-    for cl, lv in (("hoshida", ["S1", "S2", "S3"]), ("boyault", ["G1", "G2", "G3", "G5", "G6"]),
-                   ("chiang", ["CTNNB1", "proliferation", "interferon", "polysomy7", "unannotated"])):
-        tracks.append((f"{cl.title()} (NTP)", frac_table(D["states"], D["ntp"][cl], lv)[s_order]))
-    tracks.append(("Boyault (LICA-FR authors)", frac_table(D["states"], S["boyault"], ["G1", "G2", "G3", "G4", "G5", "G6"])[s_order]))
+    for key in PN.figures.get("f07c_tracks", []):
+        if key not in D["ntp"]:
+            continue
+        lv = list(PN.classifiers[key]["levels"])
+        T = frac_table(D["states"], D["ntp"][key], lv)[s_order]
+        T.index = [PN.class_label(key, x) for x in lv]
+        tracks.append((PN.class_title(key), T))
     G = D["genomic"]
     tracks.append(("Alteration frequency", pd.DataFrame(
         {s: [G.loc[m, [x for x in D["states"][s] if x in G.columns]].mean() for m in MUTS] for s in s_order},
@@ -492,10 +483,9 @@ def fig_integrated(D, prog, st, outdir, R, written):
 def fig_program_signatures(D, prog, outdir, R, written):
     """Programs x curated signatures (activity r, global mean regressed out), both clustered."""
     cols, groups = [], []
-    for g, sigs in SIG_GROUPS.items():
-        sigs = [s for s in sigs if s in D["cor"].columns]
-        cols += sigs
-        groups += [g] * len(sigs)
+    for s_ in PN.signatures(available=set(D["cor"].columns)):
+        cols.append(s_["set"])
+        groups.append(s_["group"])
     C0 = D["cor"].loc[list(D["programs"]), cols]
     Zr, ro = cluster(C0.values)
     Zc, co = cluster(C0.values.T)
@@ -514,7 +504,7 @@ def fig_program_signatures(D, prog, outdir, R, written):
     axd.set_title("Program activity vs known signatures, clustered (r, per-sample global mean regressed out);\n"
                   "dot = direct gene overlap FDR < 0.05, ≥ %d-fold" % R["min_fold"], loc="left", fontsize=9)
     axg = fig.add_subplot(gs[1, 1])
-    gnames = list(SIG_GROUPS)
+    gnames = list(dict.fromkeys(groups))
     gcol = {g: Q.SLOTS[i] for i, g in enumerate(gnames)}
     for j, g in enumerate(grp):
         axg.add_patch(plt.Rectangle((j - 0.5, 0), 1, 1, color=gcol[g], lw=0))
@@ -596,11 +586,12 @@ def fig_state_survival(P, D, st, outdir, R, log, written):
     enr = pd.read_csv(os.path.join(res, "07_post", "subtype_mapping", P["post"]["subtypes_dir"], "state_enrichment.tsv"),
                       sep="\t")
     enr["state"] = enr["state"].astype(str)
-    blocks = [("Hoshida (NTP)", "ntp_hoshida", ["S1", "S2", "S3"]),
-              ("Boyault (NTP)", "ntp_boyault", ["G1", "G2", "G3", "G5", "G6"]),
-              ("Chiang (NTP)", "ntp_chiang", ["proliferation", "polysomy7", "interferon", "unannotated", "CTNNB1"]),
-              ("Boyault (LICA-FR authors)", "boyault", ["G1", "G2", "G3", "G4", "G5", "G6"]),
-              ("Molecular group (LICA-FR)", "molecular_group", None),
+    blocks = []
+    for key in PN.figures.get("f07c_tracks", []):
+        spec = PN.classifiers[key]
+        ann = spec.get("column", key) if spec.get("source") == "label" else f"ntp_{key}"
+        blocks.append((PN.class_title(key), ann, list(spec["levels"])))
+    blocks += [("Molecular group (LICA-FR)", "molecular_group", None),
               ("Immune class (LICA-FR)", "immune_class", ["hot", "cold"]),
               ("Cohort", "cohort", ["TCGA", "CLCA", "LICA_FR"])]
     rows, sig, labels, starts = [], [], [], []
@@ -727,14 +718,15 @@ def fig_known_new(prog, outdir, R, written):
 def fig_risk_by_subtype(D, outdir, written):
     S = D["samples"]
     risk = D["risk"]
-    panels = [("Hoshida (NTP)", D["ntp"]["hoshida"], ["S1", "S2", "S3"]),
-              ("Boyault (NTP)", D["ntp"]["boyault"], ["G1", "G2", "G3", "G5", "G6"]),
-              ("Chiang (NTP)", D["ntp"]["chiang"], ["proliferation", "polysomy7", "interferon", "unannotated", "CTNNB1"]),
-              ("Boyault (LICA-FR authors)", S["boyault"], ["G1", "G2", "G3", "G4", "G5", "G6"]),
-              ("Molecular group (LICA-FR authors)", S["molecular_group"], None),
-              ("Immune class (LICA-FR authors)", S["immune_class"], ["hot", "cold"])]
+    panels = [(PN.class_title(k), D["ntp"][k], list(PN.classifiers[k]["levels"]))
+              for k in PN.figures.get("f07c_tracks", []) if k in D["ntp"]]
+    panels += [("Molecular group (LICA-FR authors)", S["molecular_group"], None),
+               ("Immune class (LICA-FR authors)", S["immune_class"], ["hot", "cold"])]
     colors = Q.cohort_colors(["TCGA", "CLCA", "LICA_FR"])
-    fig, axes = plt.subplots(2, 3, figsize=(15, 8.2))
+    nr = int(np.ceil(len(panels) / 3))
+    fig, axes = plt.subplots(nr, 3, figsize=(15, 4.1 * nr))
+    for ax in axes.ravel()[len(panels):]:
+        ax.set_visible(False)
     rng = np.random.default_rng(0)
     for ax, (title, lab, levels) in zip(axes.ravel(), panels):
         lab = lab.reindex(risk.index)
@@ -776,7 +768,7 @@ def fig_state_risk(D, st, outdir, written):
     for k in order:
         v = D["states"][k]
         parts = []
-        for cl in ("hoshida", "boyault", "chiang"):
+        for cl in [k for k, _ in PN.figures.get("fig1c_tracks", []) if k in D["ntp"]]:
             c = D["ntp"][cl].reindex(v)
             c = c[c != "unassigned"].dropna()
             if len(c):
@@ -813,6 +805,7 @@ def main():
     R = P["post"]["figures"]
     outdir = p(os.path.join(P["paths"]["results"], OUT))
     log = setup_logging(outdir, "07c_figures")
+    PN.log = log
     D = load(P, matrix, log)
     prog = annotate_programs(D, R)
     st = state_table(D)
@@ -824,7 +817,7 @@ def main():
                                                         "best_activity_signature", "best_activity_r"]].to_string())
     # prognostic value beyond known subtypes
     KS = known_scores(P, D, R)
-    R["adjust_labels"] = list(KS.columns)
+    R["adjust_labels"] = [PN.label(c) for c in KS.columns]
     surv = load_surv(P, R)
     adj = cox_adjusted(D["act"], surv, KS, R)
     adj.index.name = "program"
@@ -863,6 +856,7 @@ def main():
     fig_program_signatures(D, prog, outdir, R, written)
     fig_state_risk(D, st, outdir, written)
     fig_state_survival(P, D, st, outdir, R, log, written)
+    proposed_labels(prog, outdir, R, log)
     log.info("Figures: %s", ", ".join(written))
 
 

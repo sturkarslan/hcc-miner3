@@ -33,6 +33,27 @@ Keep entries short: date, what, why.
 
 ## Decisions
 
+- **[2026-10-01] Reference signature panel: downstream analyses and figures move from the 2007–2009 classes to recent classifications (code ready; re-run needed).**
+  - **Why:** 07c, 08 and 09 hard-coded Hoshida/Boyault/Chiang classes, 2004–2011 prognostic sets and a fixed list of "known" signatures (`SIG_GROUPS`, `CLASS_BIO`, `SIG_BIO`, `ANCHORS`, `known_sets`, `post.figures.adjust_signatures`).
+  - **What:** `config/reference_panel.yaml` plus a loader, `scripts/hcc_panel.py`, now define all of these in one place:
+    - biology blocks and anchors;
+    - signatures shown against programs;
+    - sample classes per figure (Fig 1c tracks, Fig 2b panels, Fig 2c rows, 07c tracks);
+    - the known-signature covariates (signed "up − down" entries allowed);
+    - the head-to-head benchmark models.
+  - **Priority:** Montironi 2023 immune classes / Inflamed, Sia 2017 immune class, Haber 2023 IFNAP and published immune sets, Zhu 2022 ABRS, Gao 2019 TP53/CTNNB1 proteomes and PYCR2/ADH1A prognosis axes, WNT/β-catenin activation, Désert 2017 zonation. Hoshida/Boyault/Chiang stay as labelled references.
+  - **Benchmark (07c f6b, 08, Fig 2g):** Hoshida classes; Chiang proliferation; immune & WNT classes (2017–2023); Gao proteogenomic prognosis; all published scores. "Beyond known subtypes" now adjusts for 14 published scores (was 7, all 2008–2011).
+  - **Code changes:**
+    - 07b writes `ntp_calls_montironi.tsv`.
+    - 07c reads every class/signature list from the panel and writes `program_labels_proposed.tsv`: panel-first labels for curation (|r| ≥ 0.6, "low …" when negative, else named by regulators).
+    - 07d labels programs by the panel when |r| ≥ 0.5.
+    - 08 uses the panel scores and models.
+    - 09 reads block anchors, Fig 1c/1d, Fig 2b/2c/2g from the panel.
+  - **Tested on synthetic data only:** 07a → 07b → 07c end to end; 09 Fig 1c/1d/2b/2c/2g panel functions; all panel set names resolve against the custom TSV, and the 15 MSigDB names were already used before.
+  - **To do on the server:**
+    1. `bash scripts/slurm/rerun_reference_panel.sh` (07a → 07b → 07c → 07d + 08 → 09). This also applies the NTP null fix.
+    2. Review `program_labels_proposed.tsv` and update `config/program_labels.tsv`; re-run 09.
+    3. Refresh the numbers and narrative in `docs/figure_legends.md` (marked pending) and record the new results here: state–class enrichment, prognosis beyond the expanded known-signature set, head-to-head C-indices.
 - **[2026-10-01] Immune-class signatures (Montironi 2023, Sia 2017, Haber 2023), Montironi classes in 07b, and an NTP null-distribution fix.**
   - `scripts/tools/extract_immune_signatures.py` parses the supplements, which are mostly PDF tables. Haber Table S6 is parsed by word position because its rows wrap. Every list is checked against the size the paper states, and the script stops on a mismatch. Sets:
     - Montironi Inflamed 20-gene signature, and the Wnt/β-catenin activation signature (463 up / 702 dn).
