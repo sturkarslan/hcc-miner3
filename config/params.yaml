@@ -182,6 +182,17 @@ post:
     # Pre-specified primary test (fixed before looking at results). Everything else is sensitivity.
     primary: {predictor: d_mean, endpoint: RFS, adjustment: none, driver_set: all}
 
+  axin1_ctnnb1:                # step 07f: AXIN1-only vs CTNNB1-only mutants vs double wild type, every program
+    features: {AXIN1: MUT_AXIN1, CTNNB1: MUT_CTNNB1}
+    adjust: [MUT_TP53, 55]     # genomic features and program ids (55 = proliferation); cohort is always in
+    q_max: 0.05                # BH over programs
+    min_group_cohort: 10       # per-cohort sign check needs >= this many mutants of each gene
+    genes:                     # marker genes fitted with the same model
+      wnt_targets: [GLUL, AXIN2, NKD1, LGR5, TBX3, RNF43, ZNRF3]
+      antigen_presentation: [B2M, HLA-A, HLA-B, TAP1, PSMB9]
+      interferon: [STAT1, IRF1, CXCL9, CXCL10]
+      t_cell: [CD8A, CD3E, GZMK]
+
 # ---------------------------------------------------------------- step 03b (genomic features for causal inference)
 genomics:
   min_altered: 15          # altered samples among profiled

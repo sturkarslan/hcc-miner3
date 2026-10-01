@@ -18,15 +18,15 @@ differentiation and WNT/β-catenin signalling; and immune and stromal content. T
 line up with published HCC classes: states high in proliferation programs are enriched for proliferative classes and
 TP53 mutations, while states high in differentiation programs are enriched for hepatocyte-like and CTNNB1-mutant
 tumours. Causal inference connects driver mutations to specific regulators and programs. For example, CTNNB1 mutation
-acts through the Wnt effectors LEF1 and TCF7 to switch on the β-catenin and low-recurrence programs. We then asked
-whether a driver's causal effects on the programs anticipate its association with recurrence, testing this strictly
-out of sample: program risk weights learned in one cohort were compared with driver outcome in the other. With weights
-from CLCA and outcome in TCGA the association is positive but modest (ρ = 0.34), and it weakens when correlated
-copy-number arms are counted once (ρ = 0.16). The reverse direction has only ten testable drivers and shows no
-association. The signal that exists sits in the programs each driver causally reaches (ρ = 0.32) rather than in the
-programs it does not reach (ρ = −0.01). We therefore treat this as suggestive, not as evidence that the causal layer
-predicts driver prognosis. An earlier version of this panel reported ρ = 0.64; that estimate reused the training
-cohort's outcome and was inflated.
+acts through the Wnt effectors LEF1 and TCF7 to switch on the β-catenin and low-recurrence programs. The network also separates
+two drivers that are usually grouped together as WNT-pathway mutations. CTNNB1-mutant tumours switch on the
+WNT/β-catenin programs and the classic liver targets GLUL, AXIN2 and NKD1. AXIN1-mutant tumours do not: they show
+only a partial rise in a few targets (LGR5, TBX3, RNF43, ZNRF3). Both groups are low in immune and stromal programs,
+but the detail differs: AXIN1 mutants have lower MHC class I antigen-presentation genes (B2M, HLA-A/B, TAP1, PSMB9),
+which CTNNB1 mutants do not, whereas T-cell genes are lower mainly in CTNNB1 mutants. Ten programs move in opposite
+directions in the two groups, and the causal layer places LEF1 and TCF7 up under CTNNB1 and down under AXIN1. Low WNT
+output in AXIN1-mutant HCC and reduced immune infiltration in both groups have been reported before; the split
+between the two immune-low patterns and the opposite programs is the part that needs independent validation.
 
 ### Legend
 
@@ -50,15 +50,12 @@ effects (one per regulon family) plus LEF1 and TCF7. Edges: red, up in mutant tu
 regulator represses its regulon; width proportional to |Cohen's d|. Flows shown are high confidence: Benjamini–Hochberg
 q ≤ 0.1 for the regulon and driver–regulator tests, same direction in every cohort tested, |d| ≥ 0.5 and ≥ 30
 altered tumours.
-**f**, Out-of-sample test of whether a driver's causal effects on programs track its association with recurrence.
-Risk push: mean over the driver's high-confidence regulon families of Cohen's d times the risk weight of the family's
-program, with weights from the ridge model trained in one cohort. y axis: Cox z for recurrence (36 months) of the
-driver in the other cohort (≥ 10 altered and ≥ 10 wild-type tumours). Left, CLCA weights and TCGA outcome (71 drivers
-in 33 clusters of overlapping alterations): Spearman ρ = 0.34 (cluster-bootstrap 95% interval 0.08–0.53), P = 0.041
-by permutation of program weights, P = 0.070 against random regulon families; ρ = 0.16 with one driver per cluster.
-Right, TCGA weights and CLCA outcome (10 drivers, 8 clusters; CLCA has no copy-number data): ρ = 0.14 (−0.75 to 0.78),
-permutation P = 0.74. Point size, number of altered tumours in the test cohort. Predictor and endpoint were fixed
-before the analysis.
+**f**, AXIN1 and CTNNB1 mutations have different program effects. Left, effect of AXIN1-only (n = 77) and
+CTNNB1-only (n = 218) mutation on each of the 76 programs relative to tumours wild type for both (n = 620), in s.d.
+of program activity (linear model adjusted for TP53 mutation, proliferation program activity and cohort; four tumours
+with both mutations excluded). Colours: significant for CTNNB1 only, AXIN1 only, both in the same direction (shared),
+both in opposite directions, or neither (Benjamini–Hochberg q ≤ 0.05 over programs). Right, the same model for the
+expression of WNT target, MHC class I and T-cell genes.
 
 ---
 
@@ -114,7 +111,7 @@ without the test cohort.
 | 1c | `04_miner/combat/subtypes_filtered/`, `07_post/subtype_mapping/subtypes_filtered/ntp_calls_*.tsv`, `03_genomics_clinical/genomic_features.csv` |
 | 1d | `07_post/subtype_mapping/subtypes_filtered/program_signature_correlation.tsv` |
 | 1e | `05_causal/combat/highConfidenceCausalResults.csv` |
-| 1f | `07_post/driver_push/{driver_table.tsv,summary.tsv}` (step 07e) |
+| 1f | `07_post/axin1_ctnnb1/{program_effects.tsv,gene_effects.tsv,groups.tsv}` (step 07f) |
 | 2a | `06_risk/combat/predictor_ridge_programs_TCGA_RFS_h36m/weights.tsv` |
 | 2b, 2c | `06_risk/.../predictions.tsv`, NTP calls, `01_harmonized/samples.tsv`, `03_genomics_clinical/survival_*_h36m_miner.csv` |
 | 2d | `06_risk/combat/predictor_ridge_programs_{TCGA,CLCA}_RFS_h36m/` |

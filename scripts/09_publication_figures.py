@@ -438,6 +438,61 @@ def f1e_ctnnb1(ax, D, P, n_top=12, force=("LEF1", "TCF7", "TCF7L1")):
     return sel
 
 
+def f1f_axin1(fig, sub, D, P):
+    """AXIN1-only vs CTNNB1-only mutants against double wild type (step 07f): every program, then marker genes."""
+    adir = os.path.join(D["res"], "07_post", "axin1_ctnnb1")
+    T = pd.read_csv(os.path.join(adir, "program_effects.tsv"), sep="\t", dtype={"program": str}).set_index("program")
+    G = pd.read_csv(os.path.join(adir, "gene_effects.tsv"), sep="\t", index_col=0)
+    grp = pd.read_csv(os.path.join(adir, "groups.tsv"), sep="\t", index_col=0)["group"].value_counts()
+    gs = gridspec.GridSpecFromSubplotSpec(1, 2, subplot_spec=sub, width_ratios=[1.5, 1], wspace=0.5)
+    ax = fig.add_subplot(gs[0])
+    col = {"CTNNB1 only": Q.SLOTS[0], "shared": Q.INK, "opposite": Q.SLOTS[1], "AXIN1 only": Q.SLOTS[2], "neither": "#c4c4c0"}
+    ax.axhline(0, color=Q.AXIS, lw=0.4)
+    ax.axvline(0, color=Q.AXIS, lw=0.4)
+    for k in ("neither", "CTNNB1 only", "shared", "AXIN1 only", "opposite"):
+        d = T[T["pattern"] == k]
+        ax.scatter(d["beta_CTNNB1"], d["beta_AXIN1"], s=7, color=col[k], edgecolor="white", linewidth=0.25, zorder=3,
+                   label=f"{k} ({len(d)})")
+    for k, (dx, dy, ha) in {"2": (-2, -7, "right"), "7": (-2, 3, "right"), "47": (3, -5, "left"), "64": (3, -2, "left"),
+                            "21": (3, 2, "left"), "60": (-3, -3, "right"), "11": (-3, 1, "right"),
+                            "1": (3, -5, "left")}.items():
+        ax.annotate(D["plabel"].get(k, f"P{k}").split(" (")[0].replace(" program", ""), (T.loc[k, "beta_CTNNB1"], T.loc[k, "beta_AXIN1"]), fontsize=4.1,
+                    xytext=(dx, dy), textcoords="offset points", ha=ha)
+    ax.set_xlabel("CTNNB1-mutant effect (s.d.)")
+    ax.set_ylabel("AXIN1-mutant effect (s.d.)")
+    ax.margins(x=0.1, y=0.12)
+    ax.set_xlim(left=-1.9)
+    ax.legend(loc="upper left", bbox_to_anchor=(0.0, 1.14), ncol=3, fontsize=4.1, handletextpad=0.0, columnspacing=0.4,
+              borderaxespad=0)
+    despine(ax)
+    fig.text(ax.get_position().x0, ax.get_position().y1 + 0.036,
+             f"AXIN1 (n = {grp['AXIN1']}) and CTNNB1 (n = {grp['CTNNB1']}) mutations: program effects", fontsize=6.5, va="bottom")
+
+    ax2 = fig.add_subplot(gs[1])
+    names = {"wnt_targets": "WNT targets", "antigen_presentation": "MHC class I", "t_cell": "T cell"}
+    y, yt, yl = 0, [], []
+    for st, nm in names.items():
+        g = G[G["set"] == st]
+        ax2.text(-0.02, y - 0.75, nm, fontsize=4.4, color=Q.MUTED, transform=ax2.get_yaxis_transform(), ha="right", va="center")
+        for gene, r in g.iterrows():
+            ax2.plot([r["beta_AXIN1"], r["beta_CTNNB1"]], [y, y], color=Q.AXIS, lw=0.5, zorder=1)
+            ax2.scatter(r["beta_AXIN1"], y, s=9, color=Q.SLOTS[2], zorder=3, label="AXIN1" if y == 0 else None)
+            ax2.scatter(r["beta_CTNNB1"], y, s=9, color=Q.SLOTS[0], zorder=3, label="CTNNB1" if y == 0 else None)
+            yt.append(y)
+            yl.append(gene)
+            y += 1
+        y += 1.3
+    ax2.axvline(0, color=Q.AXIS, lw=0.4)
+    ax2.set_yticks(yt)
+    ax2.set_yticklabels(yl, fontsize=4.4, style="italic")
+    ax2.set_ylim(y - 1.6, -1.6)
+    ax2.set_xlabel("effect on expression (s.d.)")
+    ax2.legend(loc="upper left", bbox_to_anchor=(0.0, 1.14), ncol=2, fontsize=4.1, handletextpad=0.0, columnspacing=0.4,
+               borderaxespad=0)
+    despine(ax2)
+    return ax, T, G
+
+
 def f1f_push(fig, sub, D, P):
     """Driver risk push vs driver prognosis, out of sample only (step 07e): program weights trained in one
     cohort, driver Cox z measured in the other. Pre-specified predictor and endpoint (post.driver_push.primary)."""
@@ -509,8 +564,8 @@ def figure1(D, P, outdir, log):
     ax = fig.add_subplot(bot[0])
     e = f1e_ctnnb1(ax, D, P)
     letter(ax, "e", x=0.0, y=1.0)
-    ax, f = f1f_push(fig, bot[1], D, P)
-    letter(ax, "f", x=-0.3, y=1.3)
+    ax, f, f2 = f1f_axin1(fig, bot[1], D, P)
+    letter(ax, "f", x=-0.22, y=1.3)
     for ext in ("pdf", "png"):
         fig.savefig(os.path.join(outdir, f"figure1.{ext}"))
     plt.close(fig)
@@ -519,7 +574,8 @@ def figure1(D, P, outdir, log):
         M.to_excel(xw, "1c_programs_x_states")
         C.to_excel(xw, "1d_program_signature_r")
         e.to_excel(xw, "1e_ctnnb1_flows")
-        f.to_excel(xw, "1f_driver_push")
+        f.to_excel(xw, sheet_name="1f_programs")
+        f2.to_excel(xw, sheet_name="1f_genes")
     log.info("Figure 1 written")
 
 
