@@ -33,6 +33,14 @@ Keep entries short: date, what, why.
 
 ## Decisions
 
+- **[2026-10-01] Step 07f: AXIN1 vs CTNNB1 (new Figure 1f); driver-push panel moved out of the main figure.** User judged the out-of-sample driver-push panel too weak for a main figure. `scripts/07f_axin1_ctnnb1.py`, settings `post.axin1_ctnnb1`, outputs `results/07_post/axin1_ctnnb1/`. Replaces the ad hoc analysis in the novelty entry.
+  - Design: AXIN1-only (77) vs CTNNB1-only (218) vs double wild type (620); 4 double mutants excluded. Per program, OLS on standardized activity adjusted for TP53, P55 and cohort; all 76 programs tested, BH over programs; per-cohort sign check.
+  - **Programs (q ≤ 0.05):** CTNNB1 only 31, shared 23, opposite 10, AXIN1 only 6, neither 6; 50 of 76 differ between the drivers. WNT programs P2 / P9 / P7: CTNNB1 +1.43 / +1.35 / +1.09, AXIN1 ≈ 0. Opposite: P47 (−0.58 vs +0.52), P64 (−0.74 vs +0.21), P1, P21, P23 and others.
+  - **Correction to the earlier wording:** immune programs are "shared" (down in both); the interferon difference is small (P60 −0.63 vs −0.40, q_diff 0.10; P16 q 0.05), so "interferon-low is AXIN1-specific" is not supported. What is AXIN1-specific is MHC class I genes: B2M −0.52, HLA-B −0.62, TAP1 −0.51, PSMB9 −0.59 (CTNNB1 ≈ 0; same sign in all three cohorts). T-cell genes (CD3E, GZMK) are lower mainly in CTNNB1.
+  - **AXIN1 is not Wnt-null:** GLUL / AXIN2 / NKD1 ≈ 0, but LGR5, TBX3, RNF43, ZNRF3 are up +0.4 to +0.5 (all cohorts), against +1.3 to +1.5 in CTNNB1. Describe as partial.
+  - Causal layer: 10 regulators have opposite direction under the two drivers (LEF1, TCF7, NR3C1, HLF, RORA, NFE2L1 up in CTNNB1 / down in AXIN1; FOXA3, ARID3A, GRHL1, ZIC2 the reverse); 31 same direction.
+  - Labels added to `config/program_labels.tsv` for P47, P64, P1 (named by regulators). Step 07e results stay as a candidate supplementary figure (`results/07_post/driver_push/qc/`).
+  - Limits: expression only, no protein or spatial data; AXIN1 n = 24–27 per cohort; novelty partial (see novelty entry).
 - **[2026-10-01] Step 07e run on real data (SLURM 15008); Figure 1f replaced; earlier claim retracted.** The original 1f (ρ 0.64, 23 drivers; step 07d and "Candidate 2" in the novelty entry below) was circular (TCGA-trained weights against a TCGA+CLCA outcome), breadth-biased (sum over families) and treated overlapping drivers as independent. Those entries are superseded by this one.
   - **Pre-specified primary test** (`post.driver_push.primary`: d_mean, RFS, unadjusted, all drivers, out of sample):
     - CLCA weights → TCGA outcome: 71 drivers / 33 clusters, ρ 0.34 (cluster bootstrap 0.08–0.53), naive p 0.003, permuted-weights p 0.041, random-family p 0.070, one driver per cluster ρ 0.16.
