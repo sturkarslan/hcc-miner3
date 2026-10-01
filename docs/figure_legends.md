@@ -18,16 +18,23 @@ differentiation and WNT/β-catenin signalling; and immune and stromal content. T
 line up with published HCC classes: states high in proliferation programs are enriched for proliferative classes and
 TP53 mutations, while states high in differentiation programs are enriched for hepatocyte-like and CTNNB1-mutant
 tumours. Causal inference connects driver mutations to specific regulators and programs. For example, CTNNB1 mutation
-acts through the Wnt effectors LEF1 and TCF7 to switch on the β-catenin and low-recurrence programs. Summarising each
-driver's causal effects on the programs predicts which drivers are associated with recurrence, without using any
-survival data for the drivers themselves.
+acts through the Wnt effectors LEF1 and TCF7 to switch on the β-catenin and low-recurrence programs. We then asked
+whether a driver's causal effects on the programs anticipate its association with recurrence, testing this strictly
+out of sample: program risk weights learned in one cohort were compared with driver outcome in the other. With weights
+from CLCA and outcome in TCGA the association is positive but modest (ρ = 0.34), and it weakens when correlated
+copy-number arms are counted once (ρ = 0.16). The reverse direction has only ten testable drivers and shows no
+association. The signal that exists sits in the programs each driver causally reaches (ρ = 0.32) rather than in the
+programs it does not reach (ρ = −0.01). We therefore treat this as suggestive, not as evidence that the causal layer
+predicts driver prognosis. An earlier version of this panel reported ρ = 0.64; that estimate reused the training
+cohort's outcome and was inflated.
 
 ### Legend
 
 **Fig. 1 | A causal and mechanistic regulatory network of hepatocellular carcinoma.**
 **a**, Study design. Expression from 929 primary HCCs (TCGA-LIHC, n = 366; CLCA, n = 239; LICA-FR, n = 324) was
-harmonized to 13,866 genes and batch-corrected (ComBat), and a technical RNA-quality axis was removed. MINER inferred
-regulons, transcriptional programs and states. Causal inference linked 113 genomic features to regulators and
+harmonized to 13,866 genes and batch-corrected (ComBat). MINER inferred regulons, transcriptional programs and
+states; regulons derived from four co-expression modules that tracked a suspected technical signal (186 of 4,294)
+were excluded. Causal inference linked 113 genomic features to regulators and
 regulons. Ridge risk models on program activity were trained in TCGA or CLCA and tested in the other, and in three
 external cohorts (GSE14520, n = 221; LIRI-JP, n = 203; GSE76427, n = 115) with fixed weights.
 **b**, Network size at each level (log scale).
@@ -43,9 +50,15 @@ effects (one per regulon family) plus LEF1 and TCF7. Edges: red, up in mutant tu
 regulator represses its regulon; width proportional to |Cohen's d|. Flows shown are high confidence: Benjamini–Hochberg
 q ≤ 0.1 for the regulon and driver–regulator tests, same direction in every cohort tested, |d| ≥ 0.5 and ≥ 30
 altered tumours.
-**f**, Each driver's net risk push (sum over its causal regulon families of the sign of d times the program's risk
-weight) versus its observed association with recurrence (Cox z within cohort, Stouffer meta-analysis over TCGA and
-CLCA; copy-number features in TCGA only). Spearman ρ = 0.64, P = 0.001, 23 drivers.
+**f**, Out-of-sample test of whether a driver's causal effects on programs track its association with recurrence.
+Risk push: mean over the driver's high-confidence regulon families of Cohen's d times the risk weight of the family's
+program, with weights from the ridge model trained in one cohort. y axis: Cox z for recurrence (36 months) of the
+driver in the other cohort (≥ 10 altered and ≥ 10 wild-type tumours). Left, CLCA weights and TCGA outcome (71 drivers
+in 33 clusters of overlapping alterations): Spearman ρ = 0.34 (cluster-bootstrap 95% interval 0.08–0.53), P = 0.041
+by permutation of program weights, P = 0.070 against random regulon families; ρ = 0.16 with one driver per cluster.
+Right, TCGA weights and CLCA outcome (10 drivers, 8 clusters; CLCA has no copy-number data): ρ = 0.14 (−0.75 to 0.78),
+permutation P = 0.74. Point size, number of altered tumours in the test cohort. Predictor and endpoint were fixed
+before the analysis.
 
 ---
 
@@ -101,7 +114,7 @@ without the test cohort.
 | 1c | `04_miner/combat/subtypes_filtered/`, `07_post/subtype_mapping/subtypes_filtered/ntp_calls_*.tsv`, `03_genomics_clinical/genomic_features.csv` |
 | 1d | `07_post/subtype_mapping/subtypes_filtered/program_signature_correlation.tsv` |
 | 1e | `05_causal/combat/highConfidenceCausalResults.csv` |
-| 1f | `07_post/figures/causal_driver_summary.tsv` |
+| 1f | `07_post/driver_push/{driver_table.tsv,summary.tsv}` (step 07e) |
 | 2a | `06_risk/combat/predictor_ridge_programs_TCGA_RFS_h36m/weights.tsv` |
 | 2b, 2c | `06_risk/.../predictions.tsv`, NTP calls, `01_harmonized/samples.tsv`, `03_genomics_clinical/survival_*_h36m_miner.csv` |
 | 2d | `06_risk/combat/predictor_ridge_programs_{TCGA,CLCA}_RFS_h36m/` |
