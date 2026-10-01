@@ -48,10 +48,19 @@ classifiers:
     interferon: {up: ["^CHIANG_LIVER_CANCER_SUBCLASS_INTERFERON_UP$"], dn: ["^CHIANG_LIVER_CANCER_SUBCLASS_INTERFERON_DN$"]}
     polysomy7: {up: ["^CHIANG_LIVER_CANCER_SUBCLASS_POLYSOMY7_UP$"], dn: ["^CHIANG_LIVER_CANCER_SUBCLASS_POLYSOMY7_DN$"]}
     unannotated: {up: ["^CHIANG_LIVER_CANCER_SUBCLASS_UNANNOTATED_UP$"], dn: ["^CHIANG_LIVER_CANCER_SUBCLASS_UNANNOTATED_DN$"]}
-  # Classifiers built from config/subtype_signatures_custom.tsv use `custom:<set name>` patterns, e.g.
-  # montironi:                  # Montironi et al., Gut 2023;72:129
-  #   inflamed: {up: ["^custom:MONTIRONI_INFLAMED$"]}
-  #   excluded: {up: ["^custom:MONTIRONI_EXCLUDED$"]}
+  # Classifiers built from config/subtype_signatures_custom.tsv use `custom:<set name>` patterns.
+  sia:                          # Sia et al., Gastroenterology 2017;153:812, Suppl Table 8 (Immune class classifier)
+    immune: {up: ["^custom:SIA2017_CLASSIFIER_IMMUNE$"]}
+    rest: {up: ["^custom:SIA2017_CLASSIFIER_REST$"]}
+  montironi_inflamed:           # Montironi et al., Gut 2023;72:129, Inflamed 20-gene signature (Suppl Table 9).
+    # Montironi call a tumour Inflamed when NTP on this signature is significant; everything else is
+    # non-inflamed. The symmetric template reproduces that: only a significant "inflamed" call counts
+    # (07b post.montironi treats non_inflamed and unassigned alike).
+    inflamed: {up: ["^custom:MONTIRONI2023_INFLAMED$"]}
+    non_inflamed: {dn: ["^custom:MONTIRONI2023_INFLAMED$"]}
+  wnt_activation:               # Wnt-beta-catenin activation signature (Lachenmayer 2012, via Montironi Suppl Table 3)
+    active: {up: ["^custom:MONTIRONI2023_WNT_ACTIVATION$"], dn: ["^custom:MONTIRONI2023_WNT_ACTIVATION_DN$"]}
+    inactive: {up: ["^custom:MONTIRONI2023_WNT_ACTIVATION_DN$"], dn: ["^custom:MONTIRONI2023_WNT_ACTIVATION$"]}
 
 # Custom signatures (not in MSigDB), long format: set, reference, direction (up/dn), gene_symbol.
 custom_file: config/subtype_signatures_custom.tsv

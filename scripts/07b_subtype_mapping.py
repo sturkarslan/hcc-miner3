@@ -67,10 +67,16 @@ def ntp(z, classes, nperm, seed, fdr_cut):
     Tn = T.values / (np.linalg.norm(T.values, axis=1, keepdims=True) + 1e-12)
     S = Tn @ Xn                                     # classes x samples
     best = S.max(axis=0)
+    # Null as in Hoshida's NTP: the template scored against random gene sets of the same size drawn from
+    # all genes (permuting only the template genes gives no null for one-direction signatures, whose
+    # similarity is invariant to that permutation)
     rng = np.random.default_rng(seed)
+    Z = z.values
     exceed = np.zeros(X.shape[1])
     for _ in range(nperm):
-        exceed += (Tn @ Xn[rng.permutation(len(genes))]).max(axis=0) >= best
+        Xr = Z[rng.choice(Z.shape[0], size=len(genes), replace=False)]
+        Xr = Xr / (np.linalg.norm(Xr, axis=0, keepdims=True) + 1e-12)
+        exceed += (Tn @ Xr).max(axis=0) >= best
     pval = (exceed + 1) / (nperm + 1)
     fdr = bh(pval)
     best_cls = np.array(T.index)[S.argmax(axis=0)]
@@ -172,6 +178,28 @@ def main():
             val_rows.append({"classifier": cl, "label": lab, "n": len(d),
                              "ari": adjusted_rand_score(d["label"].astype(str), d["call"]),
                              "exact_match": same.mean() if same.any() else np.nan})
+    # Montironi 2023 immune classes (Suppl Fig 19): Inflamed signature, then Sia immune class within
+    # inflamed tumours and CTNNB1 mutation within non-inflamed tumours
+    MC = Q.get("montironi")
+    if MC and MC["inflamed_classifier"] in calls and MC["immune_classifier"] in calls:
+        F = pd.read_csv(os.path.join(res, "03_genomics_clinical", "genomic_features.csv"), index_col=0)
+        ctn = F.loc[MC["ctnnb1_feature"]].reindex(z.columns) if MC["ctnnb1_feature"] in F.index else \
+            pd.Series(np.nan, index=z.columns)
+        infl = calls[MC["inflamed_classifier"]] == MC["inflamed_class"]
+        imm = calls[MC["immune_classifier"]] == MC["immune_class"]
+        mc = pd.Series(np.where(infl, np.where(imm, "Immune", "Immune-like"),
+                                np.where(ctn == 1, "Excluded", np.where(ctn == 0, "Intermediate", None))),
+                       index=z.columns)
+        calls["montironi"] = mc
+        mc.rename("call").to_frame().assign(cohort=samples["cohort"], ctnnb1=ctn).to_csv(
+            os.path.join(outdir, "montironi_classes.tsv"), sep="\t")
+        log.info("Montironi classes (CTNNB1-unprofiled non-inflamed tumours left missing):\n%s",
+                 pd.crosstab(samples["cohort"], mc.fillna("missing")).to_string())
+        for lab in label_cols:
+            d = pd.DataFrame({"call": mc, "label": samples[lab]}).dropna()
+            if d["label"].nunique() >= 2 and len(d) >= 10:
+                val_rows.append({"classifier": "montironi", "label": lab, "n": len(d),
+                                 "ari": adjusted_rand_score(d["label"].astype(str), d["call"]), "exact_match": np.nan})
     val = pd.DataFrame(val_rows)
     val.to_csv(os.path.join(outdir, "ntp_vs_labels.tsv"), sep="\t", index=False, float_format="%.3f")
     if len(val):

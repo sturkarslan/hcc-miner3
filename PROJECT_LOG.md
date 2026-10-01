@@ -33,6 +33,15 @@ Keep entries short: date, what, why.
 
 ## Decisions
 
+- **[2026-10-01] Immune-class signatures (Montironi 2023, Sia 2017, Haber 2023), Montironi classes in 07b, and an NTP null-distribution fix.**
+  - `scripts/tools/extract_immune_signatures.py` parses the supplements, which are mostly PDF tables. Haber Table S6 is parsed by word position because its rows wrap. Every list is checked against the size the paper states, and the script stops on a mismatch. Sets:
+    - Montironi Inflamed 20-gene signature, and the Wnt/β-catenin activation signature (463 up / 702 dn).
+    - Sia Immune-class genes (108) and the Immune-class classifier (104 immune / 6 rest). Haber's Table S6 independently lists the same 104-gene classifier.
+    - Haber IFNAP (11), plus 46 published sets from Haber Table S6.
+  - New NTP classifiers in `subtype_signatures.yaml`: `sia` (immune vs rest), `montironi_inflamed` and `wnt_activation`.
+  - **Montironi classes** (`post.montironi`, following their Suppl Fig 19): Inflamed signature → Inflamed; within Inflamed, Sia immune class → Immune, otherwise Immune-like; within Non-inflamed, CTNNB1 mutation → Excluded, wild type → Intermediate (unprofiled tumours left missing). Output `montironi_classes.tsv`; compared with LICA-FR `immune_class` labels in `ntp_vs_labels.tsv`.
+  - **Bug fixed in 07b NTP (affects earlier server results; rerun 07b and downstream 07c/09):** the permutation null shuffled genes within the template only. That gives no null for one-direction signatures, so p ≈ 1 for every sample, and it is narrower than Hoshida's NTP for the others. The null now scores the templates against random gene sets of the same size drawn from all genes, as in Hoshida's NTP. Synthetic regression: Hoshida/Boyault state agreement unchanged (ARI 0.69–0.70, more samples assigned); planted Montironi classes recovered (ARI 1.00).
+  - Gao Table S2 (`mmc2`) is copy-number data; the proteomic subgroups still need Table S1.
 - **[2026-10-01] Custom signatures: Gao et al., Cell 2019 added** (`config/subtype_signatures_custom.tsv`, built by `scripts/tools/extract_gao2019_signatures.py` from user-provided Tables S3, S5 and S7; the xlsx files are not versioned). 11 sets, 4,784 rows:
   - CTNNB1-mutant vs WT proteins (131 up / 61 dn) and TP53-mutant vs WT proteins (60 / 50), BH adj. P < 0.05.
   - mRNA panels associated with ADH1A (good prognosis; 622 / 938) and PYCR2 (poor prognosis; 696 / 913).

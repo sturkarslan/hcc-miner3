@@ -156,6 +156,14 @@ post:
                         HOSHIDA_LIVER_CANCER_SUBCLASS_S3, CHIANG_LIVER_CANCER_SUBCLASS_PROLIFERATION_UP,
                         CHIANG_LIVER_CANCER_SUBCLASS_CTNNB1_UP, VILLANUEVA_LIVER_CANCER_KRT19_UP,
                         DESERT_STEM_CELL_HEPATOCELLULAR_CARCINOMA_SUBCLASS_UP]
+  montironi:                   # step 07b: Montironi 2023 immune classes (Suppl Fig 19 algorithm)
+    # Inflamed signature (NTP) -> Inflamed: Sia immune class -> Immune, otherwise Immune-like.
+    # Non-inflamed: CTNNB1 mutation -> Excluded, wild type -> Intermediate (not profiled -> missing).
+    inflamed_classifier: montironi_inflamed
+    inflamed_class: inflamed
+    immune_classifier: sia
+    immune_class: immune
+    ctnnb1_feature: MUT_CTNNB1
   driver_push:                 # step 07e: unbiased test of Figure 1f (see script docstring)
     # Weights from the model trained in `train` are only compared with driver Cox z in `test`.
     pairings:
