@@ -7,6 +7,25 @@ Keep entries short: date, what, why.
 
 ## Open questions
 
+- **[2026-10-02] Does network activity recapitulate response to standard-of-care drugs? Design written, not run:
+  `docs/soc_response_validation_design.md`.**
+  - SOC response rates are tabulated: 1L atezo-bev 30%, nivo-ipi 36%, camrelizumab-rivoceranib 25%, STRIDE 20%,
+    tislelizumab 14%, lenvatinib 19% RECIST; 2L regorafenib 11%, cabozantinib 4%, ramucirumab 5%. Plus real-world
+    rates and the subgroup patterns (non-viral / NASH, CTNNB1, pre-existing immunity, AFP).
+  - **Three levels:**
+    - L3 patient-level in treated cohorts with expression. Public: GSE109211 (STORM sorafenib vs placebo) and
+      GSE104580 (TACE). Controlled or to request: Zhu 2022 (GO30140 / IMbrave150, EGA), Haber 2023, Samsung
+      pembrolizumab.
+    - L2 subgroup direction in the 929 discovery tumours.
+    - L1 predicted vs observed ORR after calibration and population weighting.
+  - The step-06 risk score is prognostic, not predictive: it is a negative control. A predictive claim needs the
+    treatment × score interaction (IMbrave150 atezo-bev vs sorafenib; STORM sorafenib vs placebo).
+  - New testable prediction from step 07f: AXIN1-mutant tumours are MHC-I-low and should resist ICI.
+  - **Before running:**
+    1. Add Zhu 2022 Teff / Treg / myeloid / angiogenesis sets and MAPK / FGF19-FGFR4 / MET sets.
+    2. Freeze `config/drug_network_map.yaml` and record its commit here.
+    3. Fill the *(verify)* trial numbers into `config/soc_regimens.yaml`.
+
 - **[2026-10-02] iCCA cohorts for a separate iCCA model: fetch script added, not yet run.** `config/icca_cohorts.yaml` lists the 7 candidates: FU-iCCA OEP001105 (training), GSE244807, GSE107943, TCGA-CHOL, OEP002768 (iCCA subset), OEP002560 (multi-region, robustness only) and GSE255058 (response test only). `scripts/tools/fetch_icca_cohorts.py` (wrapper `scripts/slurm/fetch_icca_cohorts.sh`; run on a login node because it needs internet) does the following:
   - **GEO:** downloads the series matrix and supplementary files, writes `samples_geo.tsv` from the sample characteristics, and writes an ENA FASTQ manifest. FASTQ itself downloads only with `--fastq`.
   - **TCGA-CHOL:** downloads the Xena GDC hub files and builds a GDC API case table with an `is_icca` flag from `tissue_or_organ_of_origin`, plus OS.
