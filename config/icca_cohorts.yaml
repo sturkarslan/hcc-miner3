@@ -1,0 +1,90 @@
+# Intrahepatic cholangiocarcinoma (iCCA) cohorts for a separate iCCA model.
+# Fetched by scripts/tools/fetch_icca_cohorts.py into <data>/iCCA/<key>/.
+#
+# source:
+#   geo   - series matrix + supplementary files from the GEO FTP; FASTQ manifest from ENA (--fastq downloads it)
+#   tcga  - UCSC Xena GDC hub files (same source as TCGA-LIHC) + GDC API clinical/diagnosis table
+#   node  - NODE (biosino.org) project; needs a NODE login and, for raw reads, an application under the
+#           Chinese human genetic resources rules. Download the processed files by hand into
+#           <data>/iCCA/<key>/manual/; the script then inventories them.
+#
+# expected_n values are from the papers and the planning table and are NOT verified; the inventory
+# reports the real counts.
+
+data_dir: data/iCCA
+inventory_dir: results/00_icca
+
+cohorts:
+  FU_iCCA:
+    source: node
+    accession: OEP001105
+    role: training
+    expected_n: "262 patients (paired tumour/adjacent); ~255 tumour RNA-seq; ~244 with complete OS"
+    paper: "Dong et al., Cancer Cell 2022 (doi:10.1016/j.ccell.2021.12.006)"
+    url: https://www.biosino.org/node/project/detail/OEP001105
+    manual_files:
+      - "Level-3 RNA-seq expression matrix (tumour and adjacent)"
+      - "Level-3 somatic mutations (WES) and FGFR2 fusion calls"
+      - "Clinical table: paper Table S1 (Cell supplementary mmc2/mmc*.xlsx), OS time and status"
+    notes: "Level-3 data are free to download; raw FASTQ needs a data-use application."
+
+  GSE244807:
+    source: geo
+    accession: GSE244807
+    role: training_or_validation
+    expected_n: "246 iCCA per planning table; other papers report 169 tumour samples - check"
+    notes: "Raw counts + kallisto abundance/TPM in supplementary files; OS in sample characteristics."
+
+  GSE107943:
+    source: geo
+    accession: GSE107943
+    role: validation
+    expected_n: "30 iCCA tumours + 27 non-tumour"
+    notes: "Raw counts + RPKM; OS, death, recurrence, DFS in sample characteristics."
+
+  TCGA_CHOL:
+    source: tcga
+    project: TCGA-CHOL
+    role: validation
+    expected_n: "36 CCA tumours, ~30-33 intrahepatic"
+    xena_hub: https://gdc-hub.s3.us-east-1.amazonaws.com/download
+    xena_files:
+      - TCGA-CHOL.star_tpm.tsv.gz
+      - TCGA-CHOL.star_counts.tsv.gz
+      - TCGA-CHOL.clinical.tsv.gz
+      - TCGA-CHOL.survival.tsv.gz
+      - TCGA-CHOL.somaticmutation_wxs.tsv.gz
+    notes: "iCCA = diagnoses.tissue_or_organ_of_origin 'Intrahepatic bile duct' (GDC API table)."
+
+  OEP002560:
+    source: node
+    accession: OEP002560
+    role: robustness_multiregion
+    expected_n: "45 patients, ~205-207 tumour regions"
+    url: https://www.biosino.org/node/project/detail/OEP002560
+    manual_files:
+      - "Processed RNA-seq expression matrix (all regions)"
+      - "Region-to-patient map"
+      - "Clinical Table S1 from the source paper (survival + clinicopathology)"
+    notes: "Access tier not yet confirmed. Regions are not independent: never train on them."
+
+  OEP002768:
+    source: node
+    accession: OEP002768
+    role: validation
+    expected_n: "217 CCA (114 iCCA, 103 eCCA) tumours + 197 adjacent"
+    paper: "Deng et al., Hepatology 2023 (doi:10.1002/hep.32624)"
+    url: https://www.biosino.org/node/project/detail/OEP002768
+    manual_files:
+      - "Processed RNA-seq expression matrix"
+      - "Sample annotation with iCCA/eCCA label"
+      - "Clinical supplementary tables (OS time and status)"
+    notes: "Keep iCCA only; check how many iCCA join to OS (one later study used 84)."
+
+  GSE255058:
+    source: geo
+    accession: GSE255058
+    role: response_test
+    expected_n: "18 pretreatment biopsies (9 responders / 9 non-responders)"
+    notes: "FOLFOX-HAIC + lenvatinib + PD-1. Test set only - too small to train on.
+      Response labels may be only in the paper supplement (PMC10880187) - check the sample characteristics."

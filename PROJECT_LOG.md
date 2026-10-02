@@ -7,6 +7,13 @@ Keep entries short: date, what, why.
 
 ## Open questions
 
+- **[2026-10-02] iCCA cohorts for a separate iCCA model: fetch script added, not yet run.** `config/icca_cohorts.yaml` lists the 7 candidates: FU-iCCA OEP001105 (training), GSE244807, GSE107943, TCGA-CHOL, OEP002768 (iCCA subset), OEP002560 (multi-region, robustness only) and GSE255058 (response test only). `scripts/tools/fetch_icca_cohorts.py` (wrapper `scripts/slurm/fetch_icca_cohorts.sh`; run on a login node because it needs internet) does the following:
+  - **GEO:** downloads the series matrix and supplementary files, writes `samples_geo.tsv` from the sample characteristics, and writes an ENA FASTQ manifest. FASTQ itself downloads only with `--fastq`.
+  - **TCGA-CHOL:** downloads the Xena GDC hub files and builds a GDC API case table with an `is_icca` flag from `tissue_or_organ_of_origin`, plus OS.
+  - **NODE:** cannot be fetched automatically (needs a login). It writes `manual/README_DOWNLOAD.txt` and inventories whatever is placed in `manual/`.
+  - **Output:** `results/00_icca/inventory.tsv` and `files.tsv`.
+  - **To check on the server:** GSE244807 size (246 in planning vs 169 tumours reported by other papers); whether OEP001105 level-3 data downloads freely; the OEP002560 access tier; whether GSE255058 response labels are in GEO or only in the paper; the TCGA-CHOL intrahepatic count.
+  - iCCA stays a separate model and is never mixed into the HCC network.
 - **[2026-09-29] Cross-cohort survival comparability (approved by user; horizon implemented in step 03).** CLCA follow-up ends at ~4 years (assumed cutoff) versus 10 in TCGA, and CLCA survival is better. Checks done:
   - **The cutoff assumption barely matters up to 3 years.** 95% of CLCA operations were in 2018 (range 2017-12 to 2020-06), so every patient has at least ~2 years of real follow-up before any cutoff. Moving the cutoff from 2020-06-30 to 2021-09-30 changes KM OS at 12/24/36 months by ≤ 0.01 (0.94/0.86/0.80–0.81) and RFS by ≤ 0.03 (0.71/0.62–0.63/0.57–0.60).
   - Deaths are recorded steadily through 2021 Q3 (4.3–10.8 per 100 person-years each year), so follow-up was active. Recurrences fall from 29–38 to 7–11 per 100 person-years after year 2, which matches the known early-recurrence peak after resection, not loss of follow-up. The 2020 dip could partly be COVID-related.
