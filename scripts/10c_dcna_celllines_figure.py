@@ -31,22 +31,19 @@ SOC = ["sorafenib", "regorafenib", "cabozantinib", "doxorubicin", "epirubicin", 
 
 
 def load_cmp_expression(zpath, models, log):
+    """Cell Model Passports rnaseq_tpm (wide: 4 header rows model_id / model_name / dataset_name / data_source, then
+    gene_id, symbol, one column per model; one source per model already chosen by the Passports)."""
     z = zipfile.ZipFile(zpath)
-    name = [n for n in z.namelist() if n.endswith(".csv")][0]
-    parts = []
-    with z.open(name) as fh:
-        for ch in pd.read_csv(fh, chunksize=2_000_000, low_memory=False):
-            ch = ch[ch["model_id"].isin(models)]
-            if len(ch):
-                parts.append(ch)
-    d = pd.concat(parts)
-    log.info("CMP RNA-seq: %d rows for %d models; sources %s; columns %s", len(d), d["model_id"].nunique(),
-             d["data_source"].value_counts().to_dict() if "data_source" in d else "-", list(d.columns))
-    if "data_source" in d:   # one source per model: Sanger first
-        d["rank"] = d["data_source"].map({"Sanger": 0}).fillna(1)
-        best = d.groupby("model_id")["rank"].min()
-        d = d[d["rank"] == d["model_id"].map(best)]
-    x = d.pivot_table(index="gene_symbol", columns="model_id", values="tpm", aggfunc="mean")
+    with z.open("rnaseq_tpm_20220624.csv") as fh:
+        hdr = pd.read_csv(fh, nrows=4, header=None, low_memory=False)
+    ids = hdr.iloc[0, 2:].tolist()
+    keep = [i for i, m in enumerate(ids) if m in models]
+    with z.open("rnaseq_tpm_20220624.csv") as fh:
+        x = pd.read_csv(fh, skiprows=5, header=None, usecols=[1] + [k + 2 for k in keep], low_memory=False)
+    x.columns = ["symbol"] + [ids[k] for k in keep]
+    x = x.dropna(subset=["symbol"]).set_index("symbol").apply(pd.to_numeric, errors="coerce").groupby(level=0).mean()
+    log.info("CMP RNA-seq TPM: %d genes x %d HCC models (sources %s)", *x.shape,
+             pd.Series(hdr.iloc[3, [k + 2 for k in keep]].values).value_counts().to_dict())
     return np.log2(x.fillna(0) + 1)
 
 
@@ -123,7 +120,7 @@ def main():
             pred = (R[d][1] * s > 0).astype(int)
             for l in lines:
                 rows.append({"drug": d, "line": l, "dcna": s[l], "pred": pred[l], "z_ln_ic50": zi[l], "ln_ic50": ic[l]})
-            rho = stats.spearmanr(s, ic).statistic if s.nunique() > 1 else np.nan
+            rho = stats.spearmanr(s, ic)[0] if s.nunique() > 1 else np.nan
             bydrug.append({"level": level, "drug": d, "n_lines": len(lines), "n_pred_resp": int(pred.sum()), "spearman_dcna_lnic50": rho,
                            "delta_z": zi[pred == 1].mean() - zi[pred == 0].mean() if 0 < pred.sum() < len(pred) else np.nan})
         X = pd.DataFrame(rows)
@@ -141,6 +138,27 @@ def main():
                       "mwu_p": stats.mannwhitneyu(a, b).pvalue, "perm_p_one_sided": (1 + np.sum(np.array(null) <= obs)) / 1001,
                       "drugs_with_negative_rho": int((bd["spearman_dcna_lnic50"] < 0).sum()), "drugs_with_rho": int(bd["spearman_dcna_lnic50"].notna().sum()),
                       "sign_test_p": stats.binomtest(int((bd["spearman_dcna_lnic50"] < 0).sum()), int(bd["spearman_dcna_lnic50"].notna().sum())).pvalue})
+    # null 2: each drug's regulon set replaced by random regulons of the same size (keeps line-level sensitivity axes)
+    allr = list(A.index)
+    X0 = pooled["regulon (DCRA)"]
+    ic_z = X0.set_index(["drug", "line"])["z_ln_ic50"]
+    obs = X0.loc[X0["pred"] == 1, "z_ln_ic50"].mean() - X0.loc[X0["pred"] == 0, "z_ln_ic50"].mean()
+    nullr = []
+    for _ in range(200):
+        dl = []
+        for d in X0["drug"].unique():
+            k = len([r for r in R[d][0] if r in A.index])
+            rr = rng.choice(allr, k, replace=False)
+            sc = A.loc[rr].mean()
+            lines = X0.loc[X0["drug"] == d, "line"]
+            pr = (R[d][1] * sc[lines] > 0).astype(int).values
+            dl.append(pd.DataFrame({"pred": pr, "z": ic_z.loc[d].loc[lines].values}))
+        dl = pd.concat(dl)
+        nullr.append(dl.loc[dl["pred"] == 1, "z"].mean() - dl.loc[dl["pred"] == 0, "z"].mean())
+    tests[0]["random_regulon_null_mean"] = float(np.nanmean(nullr))
+    tests[0]["random_regulon_p_one_sided"] = (1 + np.sum(np.array(nullr) <= obs)) / (1 + len(nullr))
+    log.info("Regulon-level pooled delta %.3f; random same-size regulon sets: mean %.3f, P %.3f", obs, np.nanmean(nullr),
+             tests[0]["random_regulon_p_one_sided"])
     Tt, Bd = pd.DataFrame(tests), pd.DataFrame(bydrug)
     Tt.to_csv(os.path.join(outdir, "celllines_tests.tsv"), sep="\t", index=False, float_format="%.4g")
     Bd.to_csv(os.path.join(outdir, "celllines_by_drug.tsv"), sep="\t", index=False, float_format="%.4g")
@@ -196,8 +214,10 @@ def main():
         r = Tt.set_index("level").loc[level]
         ax.set_xticks([1, 2])
         ax.set_xticklabels(["non-resp.", "resp."], fontsize=5)
-        ax.set_title(f"{'c' if j == 0 else ''}  {level.split(' ')[0]}\n{int(r['drugs'])} drugs, {len(set(X['line']))} lines\nperm P {r['perm_p_one_sided']:.2f}",
-                     loc="left", fontsize=5.5)
+        pp = r["perm_p_one_sided"]
+        extra = f"\nrandom regulons P {r['random_regulon_p_one_sided']:.3f}" if pd.notna(r.get("random_regulon_p_one_sided", np.nan)) else ""
+        ax.set_title(f"{'c' if j == 0 else ''}  {level.split(' ')[0]} level\n{int(r['drugs'])} drugs, {len(set(X['line']))} lines\n"
+                     f"label perm P {'< 0.001' if pp <= 0.001 else f'{pp:.3f}'}{extra}", loc="left", fontsize=5.2)
         if j == 0:
             ax.set_ylabel("ln IC50 (z within drug)")
     ax = fig.add_subplot(gs[1, 0:3])
@@ -213,7 +233,7 @@ def main():
     ax.set_xticks(range(len(soc)))
     ax.set_xticklabels(soc, rotation=40, ha="right")
     ax.set_ylabel("ln IC50 (µM)")
-    ax.set_title("d  HCC cell lines, standard-of-care drugs (regulon DCNA; red = predicted responder)", loc="left")
+    ax.set_title("d  HCC lines, SOC drugs (red = predicted responder)", loc="left")
     ax = fig.add_subplot(gs[1, 3:6])
     D = pd.read_csv(os.path.join(outdir, "dcra_discovery.tsv"), sep="\t", index_col=0)
     show = [d for d in ["sorafenib", "lenvatinib", "regorafenib", "cabozantinib", "atezolizumab", "durvalumab", "pembrolizumab",

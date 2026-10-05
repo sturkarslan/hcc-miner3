@@ -59,6 +59,21 @@ Keep entries short: date, what, why.
 
 ## Decisions
 
+- **[2026-10-05] Step 10c: DCNA in HCC cell lines vs GDSC IC50 (`scripts/10c_dcna_celllines_figure.py`).** 27 HCC lines with
+  RNA-seq (Cell Model Passports rnaseq_tpm 2022-06), 16 with GDSC IC50 (GDSC2 preferred, else GDSC1); drug targets for 515 GDSC
+  compounds from Open Targets (183 with targets, 161 mapping to >= 1 regulon; 148 drugs tested in >= 8 lines). Trinary
+  regulon activity computed with gene z-scores across the 27 lines.
+  - **Pooled (148 drugs, 2,268 line × drug pairs): predicted responders have lower IC50** (within-drug z ln IC50 −0.20 vs +0.11,
+    Δ −0.31; label permutation within drug P 0.001; random regulon sets of the same size Δ −0.08, P 0.005). Program level Δ −0.24.
+    99 of 146 drugs have a negative Spearman ρ(DCNA, ln IC50) (sign test P < 1e-4). So in vitro the drug-target mapping carries
+    drug-specific signal, as in GBM.
+  - Per SOC drug (16 lines, underpowered): doxorubicin ρ −0.76 (predicted responders Δz −1.50), 5-FU −0.16, gemcitabine 0.06,
+    cabozantinib 0.05, sorafenib +0.42 and axitinib +0.64 (wrong direction).
+  - Contrast with patients: the doxorubicin / TOP2A DCNA that predicts cell-line sensitivity predicts TACE *non*-response
+    (step 10b) — proliferative tumours respond poorly to TACE clinically although proliferative lines are anthracycline-sensitive.
+  - Figure `results/10_response/figures/drug_response.{png,pdf}`: STORM and TACE response by predicted class, pooled and SOC
+    cell-line IC50, DCRA heatmap of SOC drugs across the discovery tumours.
+
 - **[2026-10-05] Step 10d: clinical-trial emulation (`scripts/10d_trial_emulation.py`; user request).** Trials in
   `config/clinical_trials.yaml` (16 HCC trials); per-arm ORR, denominator, age, % female, % Asian taken from ClinicalTrials.gov
   posted results (`scripts/tools/fetch_trials.py`, API v2; raw JSON in `data/trials/`, eligibility text in
