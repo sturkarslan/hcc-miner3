@@ -161,6 +161,12 @@ Outcomes:
 
 ## 6. Population transport (L1): predicted vs observed ORR per regimen
 
+(2026-10-05: superseded in mechanics by the trial-emulation workflow, `docs/trial_emulation_design.md`. There, each
+trial arm is emulated by 1,000 synthetic cohorts matched to its size, eligibility and baseline, and responders are
+called from drug DCNA with a threshold calibrated on other trials. Arms are listed in `config/trials.yaml`, which
+replaces the `soc_regimens.yaml` planned in section 8. The weighting idea below is kept as the population-matching
+step.)
+
 Only for drug classes with an L3 calibration (realistically ICI from Zhu / Haber, sorafenib from STORM, TACE from
 GSE104580). Steps:
 

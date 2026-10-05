@@ -7,6 +7,14 @@ Keep entries short: date, what, why.
 
 ## Open questions
 
+- **[2026-10-05] In-silico trial emulation workflow designed (`docs/trial_emulation_design.md`, shared with ICC);
+  14 HCC arms seeded in `config/trials.yaml`.**
+  - Per arm: 1,000 synthetic cohorts matched to size, eligibility and baseline; responders called from drug DCNA;
+    predicted vs published ORR.
+  - The DCNA threshold must come from other trials (leave-one-trial-out within drug class, or control-arm anchor), not
+    from the trial being predicted, which would be circular.
+  - Supersedes the population-transport mechanics in `docs/soc_response_validation_design.md` §6.
+
 - **[2026-10-02] Does network activity recapitulate response to standard-of-care drugs? Design written, not run:
   `docs/soc_response_validation_design.md`.**
   - SOC response rates are tabulated: 1L atezo-bev 30%, nivo-ipi 36%, camrelizumab-rivoceranib 25%, STRIDE 20%,

@@ -1,0 +1,194 @@
+# Published trial arms for in-silico trial emulation (docs/trial_emulation_design.md), HCC.
+# One entry per arm; `verified` lists fields checked against the paper or a review of it (2026-10-02 / 10-05); arm
+# sizes are verified only where `n` is listed; NCT IDs are not yet recorded. Fill `population` from each trial's Table 1.
+# orr_criteria: RECIST1.1 | mRECIST; reviewer: independent | investigator. Never pool across criteria.
+
+defaults:
+  n_cohorts: 1000
+  seed: 12
+
+arms:
+  IMBRAVE150_atezo_bev:
+    trial: IMbrave150 (updated analysis)
+    setting: 1L advanced HCC
+    drugs: [atezolizumab, bevacizumab]
+    n: 326                                  # response-evaluable (ITT 336)
+    orr: 0.30
+    orr_mrecist: 0.35
+    orr_criteria: RECIST1.1
+    reviewer: independent
+    control_arm: IMBRAVE150_sorafenib
+    eligibility: {filters: {}, unmatched: [Child-Pugh A, ECOG 0-1, varices treated, no prior systemic therapy]}
+    population: {hbv: null, hcv: null, nonviral: null, asia: null, mvi_or_ehs: null, afp_ge_400: null}
+    source: "Cheng et al., J Hepatol 2022 (PMC8366100 response analysis)"
+    verified: [orr, orr_mrecist, n]
+  IMBRAVE150_sorafenib:
+    trial: IMbrave150
+    setting: 1L advanced HCC
+    drugs: [sorafenib]
+    n: 159
+    orr: 0.11
+    orr_mrecist: 0.14
+    orr_criteria: RECIST1.1
+    reviewer: independent
+    eligibility: {filters: {}, unmatched: [Child-Pugh A, ECOG 0-1]}
+    population: {hbv: null, hcv: null, nonviral: null, asia: null, mvi_or_ehs: null, afp_ge_400: null}
+    source: "PMC8366100"
+    verified: [orr, orr_mrecist, n]
+  HIMALAYA_STRIDE:
+    trial: HIMALAYA
+    setting: 1L advanced HCC
+    drugs: [tremelimumab, durvalumab]
+    n: 393
+    orr: 0.201
+    orr_criteria: RECIST1.1
+    reviewer: investigator
+    control_arm: HIMALAYA_sorafenib
+    eligibility: {filters: {}, unmatched: [Child-Pugh A, ECOG 0-1]}
+    population: {hbv: null, hcv: null, nonviral: null, asia: null, mvi_or_ehs: null, afp_ge_400: null}
+    source: "Abou-Alfa et al., NEJM Evid 2022"
+    verified: [orr, n]
+  HIMALAYA_sorafenib:
+    trial: HIMALAYA
+    setting: 1L advanced HCC
+    drugs: [sorafenib]
+    n: 389
+    orr: 0.051
+    orr_criteria: RECIST1.1
+    reviewer: investigator
+    eligibility: {filters: {}, unmatched: [Child-Pugh A, ECOG 0-1]}
+    population: {hbv: null, hcv: null, nonviral: null, asia: null, mvi_or_ehs: null, afp_ge_400: null}
+    source: "Abou-Alfa et al., NEJM Evid 2022"
+    verified: [orr, n]
+  CM9DW_nivo_ipi:
+    trial: CheckMate 9DW
+    setting: 1L advanced HCC
+    drugs: [nivolumab, ipilimumab]
+    n: 335
+    orr: 0.36
+    orr_criteria: RECIST1.1
+    reviewer: independent
+    control_arm: CM9DW_len_or_sor
+    eligibility: {filters: {}, unmatched: [Child-Pugh A]}
+    population: {hbv: null, hcv: null, nonviral: null, asia: null, mvi_or_ehs: null, afp_ge_400: null}
+    source: "Galle et al., Lancet 2025"
+    verified: [orr]
+  CM9DW_len_or_sor:
+    trial: CheckMate 9DW
+    setting: 1L advanced HCC
+    drugs: [lenvatinib_or_sorafenib]           # investigator's choice; mostly lenvatinib (fraction to fill)
+    n: 333
+    orr: 0.13
+    orr_criteria: RECIST1.1
+    reviewer: independent
+    eligibility: {filters: {}, unmatched: [Child-Pugh A]}
+    population: {hbv: null, hcv: null, nonviral: null, asia: null, mvi_or_ehs: null, afp_ge_400: null}
+    source: "Galle et al., Lancet 2025"
+    verified: [orr]
+  CARES310_camrelizumab_rivoceranib:
+    trial: CARES-310
+    setting: 1L advanced HCC (mostly Asian, HBV)
+    drugs: [camrelizumab, rivoceranib]
+    n: 272
+    orr: 0.254
+    orr_criteria: RECIST1.1
+    reviewer: independent
+    control_arm: CARES310_sorafenib
+    eligibility: {filters: {}, unmatched: [Child-Pugh A, ECOG 0-1]}
+    population: {hbv: null, hcv: null, nonviral: null, asia: null, mvi_or_ehs: null, afp_ge_400: null}
+    source: "Qin et al., Lancet 2023"
+    verified: [orr]
+  CARES310_sorafenib:
+    trial: CARES-310
+    setting: 1L advanced HCC
+    drugs: [sorafenib]
+    n: 271
+    orr: 0.059
+    orr_criteria: RECIST1.1
+    reviewer: independent
+    eligibility: {filters: {}, unmatched: [Child-Pugh A]}
+    population: {hbv: null, hcv: null, nonviral: null, asia: null, mvi_or_ehs: null, afp_ge_400: null}
+    source: "Qin et al., Lancet 2023"
+    verified: [orr]
+  RATIONALE301_tislelizumab:
+    trial: RATIONALE-301
+    setting: 1L advanced HCC
+    drugs: [tislelizumab]
+    n: 342
+    orr: 0.143
+    orr_criteria: RECIST1.1
+    reviewer: independent
+    control_arm: RATIONALE301_sorafenib
+    eligibility: {filters: {}, unmatched: [Child-Pugh A]}
+    population: {hbv: null, hcv: null, nonviral: null, asia: null, mvi_or_ehs: null, afp_ge_400: null}
+    source: "Qin et al., JAMA Oncol 2023"
+    verified: [orr]
+  RATIONALE301_sorafenib:
+    trial: RATIONALE-301
+    setting: 1L advanced HCC
+    drugs: [sorafenib]
+    n: 332
+    orr: 0.054
+    orr_criteria: RECIST1.1
+    reviewer: independent
+    eligibility: {filters: {}, unmatched: [Child-Pugh A]}
+    population: {hbv: null, hcv: null, nonviral: null, asia: null, mvi_or_ehs: null, afp_ge_400: null}
+    source: "Qin et al., JAMA Oncol 2023"
+    verified: [orr]
+  REFLECT_lenvatinib:
+    trial: REFLECT
+    setting: 1L advanced HCC
+    drugs: [lenvatinib]
+    n: 478
+    orr: 0.188
+    orr_mrecist_independent: 0.406
+    orr_mrecist_investigator: 0.241
+    orr_criteria: RECIST1.1
+    reviewer: independent
+    eligibility: {filters: {}, unmatched: [Child-Pugh A, < 50% liver involvement, no main portal vein invasion]}
+    population: {hbv: null, hcv: null, nonviral: null, asia: null, mvi_or_ehs: null, afp_ge_400: null}
+    source: "Kudo et al., Lancet 2018; independent review (OncLive)"
+    verified: [orr, orr_mrecist_independent, orr_mrecist_investigator]
+  RESORCE_regorafenib:
+    trial: RESORCE
+    setting: 2L after sorafenib (tolerant)
+    drugs: [regorafenib]
+    n: 379
+    orr: 0.11
+    orr_criteria: mRECIST
+    reviewer: investigator
+    eligibility: {filters: {}, unmatched: [progression on and tolerance of sorafenib]}
+    population: {hbv: null, hcv: null, nonviral: null, asia: null, mvi_or_ehs: null, afp_ge_400: null}
+    source: "Bruix et al., Lancet 2017"
+    verified: [orr]
+  CELESTIAL_cabozantinib:
+    trial: CELESTIAL
+    setting: 2L/3L after sorafenib
+    drugs: [cabozantinib]
+    n: 470
+    orr: 0.04
+    orr_criteria: RECIST1.1
+    reviewer: investigator
+    eligibility: {filters: {}, unmatched: [prior sorafenib]}
+    population: {hbv: null, hcv: null, nonviral: null, asia: null, mvi_or_ehs: null, afp_ge_400: null}
+    source: "Abou-Alfa et al., NEJM 2018"
+    verified: [orr]
+  REACH2_ramucirumab:
+    trial: REACH-2
+    setting: 2L after sorafenib, AFP >= 400 ng/mL
+    drugs: [ramucirumab]
+    n: 197
+    orr: 0.05
+    orr_criteria: RECIST1.1
+    reviewer: investigator
+    eligibility: {filters: {afp_ge_400: 1}, unmatched: [prior sorafenib]}
+    population: {hbv: null, hcv: null, nonviral: null, asia: null, mvi_or_ehs: null, afp_ge_400: 1.0}
+    source: "Zhu et al., Lancet Oncol 2019"
+    verified: [orr]
+
+real_world:
+  atezo_bev:
+    - {cohort: "systematic review, 47 studies, 5,400 pts", orr: 0.267, orr_ci: [0.246, 0.291], orr_mrecist: 0.34, source: "PubMed 37680945"}
+  lenvatinib:
+    - {cohort: Japan multicentre, orr_mrecist: 0.347, dcr: 0.816, source: "Liver Cancer 2021"}
+    - {cohort: Korea, orr_mrecist: 0.189, dcr: 0.757, source: "Liver Cancer 2021"}
