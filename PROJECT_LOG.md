@@ -59,6 +59,13 @@ Keep entries short: date, what, why.
 
 ## Decisions
 
+- **[2026-10-05] Step 10 (SOC drug response) started from Cloud's design; drug -> network map frozen.**
+  `config/drug_network_map.yaml` (version 1) and `config/soc_regimens.yaml` written and committed BEFORE any treated
+  cohort was downloaded or scored; the freeze commit is the one that adds them (hash recorded in the next entry).
+  Components use only sets available on the server: Zhu 2022 Teff / Treg / myeloid / angiogenesis sets (paper not open
+  access) and FGF19-FGFR4 / MET target sets are gaps; PROGENy pathway footprints (top 100 genes per pathway, OmniPath)
+  added for MAPK / VEGF / hypoxia (`scripts/tools/add_progeny_sets.py`).
+
 - **[2026-10-01] Figure colour rule (user request): red–blue is reserved for risk and regulon dysregulation.** All other heatmaps in Figures 1–2 use viridis (`FRAC_CMAP` in `scripts/09_publication_figures.py`): Fig 1c class/mutation tracks, Fig 2c state composition rows. Fig 1d (signed correlation) uses purple–green (`COR_CMAP` = PRGn) so that zero is white and negatives are distinct. Each has its own colour key. Labels P7 / P17 shortened to fit ("CTNNB1 proteome (HNF1A)", "Hepatocyte-like (ADH1A axis)").
 - **[2026-10-01] Reference-panel re-run done on the server (07a → 07b → 07c → 07d + 08 → 09; SLURM 15021–15026); Figures 1–2 rebuilt.**
   - **Bug found and fixed: Gao 2019 PYCR2 / ADH1A mRNA panels had reversed direction.** In Table S5 "up panel" / "bottom panel" are heatmap positions. The set extracted as PYCR2 "up" contained ADH1A and correlated r −0.35 with PYCR2 and −0.44 with MKI67; the "dn" set contained PYCR2 itself (r +0.49; MKI67 +0.86). Same for ADH1A. Directions swapped in `config/subtype_signatures_custom.tsv` (3,169 rows) and in `scripts/tools/extract_gao2019_signatures.py`. Effect of the bug: proliferation block had 2 programs (anchor mean r < 0.3); after the fix blocks are 12 proliferation / 24 differentiated-WNT / 17 immune-stromal / 23 other. Cox models are sign-invariant, so C-indices did not change.

@@ -1,0 +1,31 @@
+# Pre-specified drug class -> network mapping (step 10; docs/soc_response_validation_design.md section 3).
+# FROZEN before any treated cohort is scored: its commit is recorded in PROJECT_LOG. Do not edit after scoring;
+# a change needs a new version with its own commit and a note on why.
+#
+# Drug-class score = mean of the within-cohort standardized components, each multiplied by its sign. Equal weights,
+# no fitting on response.
+#   programs:   MINER program IDs of the main HCC network (config/program_labels.tsv)
+#   signatures: set names as in results/07_post/signatures/signatures.tsv; "A - A_DN" = signed set (up minus down)
+# Gaps (not available on the server, so not in the map): Zhu 2022 T-effector / Treg / myeloid-inflammation /
+# angiogenesis signatures (Methods of the paper, not open access); FGF19-FGFR4 and MET / HGF target sets. CCND1/FGF19
+# amplification is a genomic feature, used in the step-10 subgroup contrasts, not in the expression score.
+version: 1
+drug_classes:
+  ici:                                   # PD-(L)1 +/- CTLA-4: atezo-bev, STRIDE, nivo-ipi, tislelizumab, pembrolizumab
+    programs: {"11": 1, "60": 1, "16": 1, "2": -1, "7": -1, "9": -1, "39": -1, "22": -1, "23": -1}
+    signatures: {custom:ZHU2022_ABRS: 1, custom:HABER2023_IFNAP: 1, custom:SIA2017_IMMUNE_CLASS_UP: 1}
+  anti_vegf:                             # bevacizumab, ramucirumab (and the VEGFR part of TKIs)
+    programs: {"33": 1, "50": 1}
+    signatures: {"custom:PROGENY_VEGF - custom:PROGENY_VEGF_DN": 1}
+  lenvatinib:                            # VEGFR1-3, FGFR1-4
+    programs: {"33": 1}
+    signatures: {"custom:PROGENY_VEGF - custom:PROGENY_VEGF_DN": 1}
+  sorafenib:                             # RAF, VEGFR, PDGFR; STORM responders were immune-rich (Pinyol 2019)
+    programs: {"11": 1}
+    signatures: {"custom:PROGENY_MAPK - custom:PROGENY_MAPK_DN": 1, "custom:PROGENY_VEGF - custom:PROGENY_VEGF_DN": 1}
+  tace:                                  # TACE (BCLC B): hypoxia / glycolysis and proliferation predict resistance
+    programs: {"75": -1, "55": -1}
+    signatures: {"custom:PROGENY_HYPOXIA - custom:PROGENY_HYPOXIA_DN": -1}
+negative_controls:
+  risk_score: ridge_programs_TCGA_RFS_h36m   # step-06 prognostic score; expected NOT to be predictive
+  random_program_sets: 1000                  # same size and sign mix as each drug class

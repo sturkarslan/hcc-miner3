@@ -1,0 +1,17 @@
+# Standard-of-care regimens and reported response rates (seed: docs/soc_response_validation_design.md section 1).
+# verify: true = not yet re-checked against the primary paper. ORR = confirmed objective response rate.
+regimens:
+  - {regimen: atezolizumab + bevacizumab, trial: IMbrave150 (updated), line: 1L, drug_class: [ici, anti_vegf], orr: 0.30, criteria: RECIST 1.1 IRF, orr_mrecist: 0.35, control_orr: 0.11, mos: 19.2, control_mos: 13.4, verify: [mos, control_mos]}
+  - {regimen: nivolumab + ipilimumab, trial: CheckMate 9DW, line: 1L, drug_class: [ici], orr: 0.36, criteria: RECIST 1.1 BICR, control_orr: 0.13, mos: 23.7, control_mos: 20.6}
+  - {regimen: camrelizumab + rivoceranib, trial: CARES-310, line: 1L, drug_class: [ici, anti_vegf], orr: 0.254, control_orr: 0.059, mos: 22.1, control_mos: 15.2, verify: [mos, control_mos]}
+  - {regimen: durvalumab + tremelimumab (STRIDE), trial: HIMALAYA, line: 1L, drug_class: [ici], orr: 0.201, control_orr: 0.051, mos: 16.4, control_mos: 13.8, verify: [mos, control_mos]}
+  - {regimen: durvalumab, trial: HIMALAYA, line: 1L, drug_class: [ici], orr: 0.17, verify: [orr]}
+  - {regimen: tislelizumab, trial: RATIONALE-301, line: 1L, drug_class: [ici], orr: 0.143, control_orr: 0.054}
+  - {regimen: lenvatinib, trial: REFLECT, line: 1L, drug_class: [lenvatinib], orr: 0.188, criteria: RECIST 1.1 independent, orr_mrecist: 0.406}
+  - {regimen: sorafenib, trial: SHARP, line: 1L, drug_class: [sorafenib], orr: 0.02, verify: [orr]}
+  - {regimen: regorafenib, trial: RESORCE, line: 2L, drug_class: [sorafenib], orr: 0.11, criteria: mRECIST}
+  - {regimen: cabozantinib, trial: CELESTIAL, line: 2L, drug_class: [], orr: 0.04}
+  - {regimen: ramucirumab (AFP >= 400), trial: REACH-2, line: 2L, drug_class: [anti_vegf], orr: 0.05}
+  - {regimen: pembrolizumab, trial: KEYNOTE-240, line: 2L, drug_class: [ici], orr: 0.183, verify: [orr]}
+real_world:
+  - {regimen: atezolizumab + bevacizumab, n_studies: 47, n: 5400, orr: 0.267, orr_ci: [0.246, 0.291], orr_mrecist: 0.34}
