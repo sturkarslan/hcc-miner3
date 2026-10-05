@@ -59,6 +59,24 @@ Keep entries short: date, what, why.
 
 ## Decisions
 
+- **[2026-10-05] Step 10b: drug-constrained network activity (DCNA), as in the GBM work (`scripts/10b_dcna.py`, miner3 env).**
+  Trinary regulon activity (MINER generateRegulonActivity; discovery = MINER's own over − under membership); drug → regulons =
+  regulons whose regulator is a target or that contain a target (Open Targets, `scripts/tools/fetch_drug_targets.py` →
+  `data/reference/ot_drug_targets.tsv`); DCRA = mean regulon activity, DCPA = mean activity of the programs holding them;
+  inhibitors predicted responsive when DCNA > 0. No drug target is a MINER regulator in this network (all mappings are via
+  regulon membership): sorafenib 74 regulons / 8 programs, lenvatinib 32 / 6, regorafenib 139 / 11, anti-PD-1 25 / 2,
+  anti-PD-L1 14 / 2, doxorubicin (TOP2A) 3 / 1; apatinib / ramucirumab (KDR alone) map to none.
+  - **GSE109211 sorafenib (regulon level):** predicted responders 39% vs 22% observed responders (OR 2.26, p 0.04) — but equally in
+    the sorafenib (OR 2.18) and placebo arms (2.32); interaction p 0.12. Prognostic, not predictive.
+    **Program level:** inverted (predicted responders 3–6% vs 45–61%, both arms): sorafenib targets sit in adverse programs.
+  - **GSE104580 TACE (doxorubicin / TOP2A as the proxy agent):** inverted — predicted responders respond less (36% vs 74%, OR 0.19,
+    p < 0.001; AUC 0.27). TOP2A regulons are proliferation regulons: high proliferation predicts TACE non-response, the
+    opposite of the "active target → sensitive" rule.
+  - **Discovery tumours, predicted-responder fraction vs trial ORR (7 monotherapies):** no relation (Spearman −0.11 regulon,
+    −0.54 program).
+  - Reading: in clinical HCC cohorts DCNA tracks the prognostic / proliferation axis rather than drug-specific benefit.
+    Cell-line drug sensitivity (GDSC IC50, Sanger Cell Model Passports expression) is being added as the in vitro test.
+
 - **[2026-10-05] Step 10 run (`scripts/10_response_validation.py`; map v1 frozen at 4d16ab5 before scoring).** Public treated
   cohorts fetched with `config/treated_cohorts.yaml`: GSE109211 (STORM adjuvant sorafenib vs placebo, FFPE DASL, 140; 42
   "responders" in both arms) and GSE104580 (TACE, U133 Plus 2 biopsies, 147; 81 responders). Network genes present 87% / 94%.
