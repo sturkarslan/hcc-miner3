@@ -168,6 +168,8 @@ def f1a_design(ax, D, P):
         arrow(x - 0.8 if i else 20.7, 21.5, x - 0.15, 21.5)
     ax.text(22.6, 11.2, "Annotation: immune classes (Montironi 2023), reference classes (Hoshida, Boyault), hallmarks",
             fontsize=4.9, color=Q.INK2, va="top")
+    box(22.6, -0.6, 59.5, 8.7, "Drug-response tests", ["GDSC: 16 HCC lines × 148 drugs  ·  STORM sorafenib  ·  TACE",
+        "13 arms of 9 phase 3 trials; 1,000 synthetic cohorts each"], Q.SLOTS[2])
     ax.text(84.5, 39.5, "External validation", fontsize=5.8, fontweight="bold", va="top")
     ext = [("GSE14520", ["n = 221 · Affymetrix", "OS / RFS · HBV, China"]),
            ("LIRI-JP", ["n = 203 · RNA-seq", "OS · HCV-dominant, Japan"]),
@@ -175,7 +177,7 @@ def f1a_design(ax, D, P):
     for i, (t, lines) in enumerate(ext):
         box(84.5, 27.5 - i * 11.5, 15.5, 9.8, t, lines, EXT_COL[t.replace("LIRI-JP", "LIRI_JP")])
     arrow(83.2, 21.5, 84.3, 21.5)
-    ax.set_ylim(4, 40)
+    ax.set_ylim(-1.5, 40)
     ax.text(84.5, 2.2, "fixed weights, never refit", fontsize=4.9, color=Q.INK2)
 
 
