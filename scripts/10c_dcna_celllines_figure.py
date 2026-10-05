@@ -159,6 +159,8 @@ def main():
     tests[0]["random_regulon_p_one_sided"] = (1 + np.sum(np.array(nullr) <= obs)) / (1 + len(nullr))
     log.info("Regulon-level pooled delta %.3f; random same-size regulon sets: mean %.3f, P %.3f", obs, np.nanmean(nullr),
              tests[0]["random_regulon_p_one_sided"])
+    for level, X in pooled.items():
+        X.to_csv(os.path.join(outdir, f"celllines_pairs_{level.split(' ')[0]}.tsv"), sep="\t", index=False, float_format="%.4g")
     Tt, Bd = pd.DataFrame(tests), pd.DataFrame(bydrug)
     Tt.to_csv(os.path.join(outdir, "celllines_tests.tsv"), sep="\t", index=False, float_format="%.4g")
     Bd.to_csv(os.path.join(outdir, "celllines_by_drug.tsv"), sep="\t", index=False, float_format="%.4g")

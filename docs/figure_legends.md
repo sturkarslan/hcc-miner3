@@ -45,7 +45,10 @@ harmonized to 13,866 genes and batch-corrected (ComBat). MINER inferred regulons
 states; regulons derived from four co-expression modules that tracked a suspected technical signal (186 of 4,294)
 were excluded. Causal inference linked 113 genomic features to regulators and
 regulons. Ridge risk models on program activity were trained in TCGA or CLCA and tested in the other, and in three
-external cohorts (GSE14520, n = 221; LIRI-JP, n = 203; GSE76427, n = 115) with fixed weights.
+external cohorts (GSE14520, n = 221; LIRI-JP, n = 203; GSE76427, n = 115) with fixed weights. Drug response: each
+drug's targets (Open Targets) were mapped to the regulons they regulate or belong to, and the mean activity of those
+regulons (drug-constrained network activity, DCNA) was compared with drug sensitivity in HCC cell lines (GDSC) and
+with response rates in published clinical trials (ClinicalTrials.gov).
 **b**, Network size at each level (log scale).
 **c**, Mean regulon dysregulation (over- minus under-expressed membership) of each program (rows) in each state
 (columns). States are hierarchically clustered (average linkage, correlation distance); programs are grouped into
@@ -96,9 +99,16 @@ performs comparably to, but not better than, published signatures: the Chiang pr
 each discovery cohort, regulators and key programs are recovered and the risk model performs just as well in the
 unseen cohort.
 
+The network also links drugs to tumour biology through their targets. In 16 HCC cell lines tested against 148 drugs,
+lines whose drug-target regulons are active are more sensitive to that drug, more than for random regulons of the same
+size. Applied to published trials, a single activity threshold fitted on the other trials orders the arms correctly
+by drug class: immune checkpoint arms are predicted to respond more often than kinase-inhibitor arms, as observed. It
+does not, however, predict an individual trial's response rate better than the average of the other trials, and it
+cannot separate drugs that share a target.
+
 ### Legend
 
-**Fig. 2 | Program-based risk, its biology and its validation.**
+**Fig. 2 | Program-based risk, its biology, its validation and drug response.**
 **a**, Largest adverse (red) and protective (blue) weights of the ridge model trained on TCGA recurrence.
 **b**, Risk score (within-cohort z) by published HCC class, labelled by biology: Montironi 2023 immune classes and
 Hoshida classes (calls for all 929 tumours, as in Fig. 1c), and the LICA-FR authors' Boyault labels (n = 324).
@@ -109,19 +119,20 @@ median GuanRank: Spearman ρ = 0.64, P = 2.2 × 10⁻⁴ (28 states with ≥ 5 t
 **d**, **e**, Kaplan–Meier curves for the within-cohort top 20% of risk scores versus the rest. **d**, Cross-cohort
 validation in discovery (TCGA-trained model in CLCA; CLCA-trained model in TCGA). **e**, External validation with the
 pre-specified TCGA-trained models, never refit. C, Harrell's C-index; HR, Cox hazard ratio of top 20% versus rest.
-**f**, Cox hazard ratio per s.d. of risk score (95% confidence interval) in every test cohort, with random-effects
-(DerSimonian–Laird) pooled estimates over external cohorts.
-**g**, C-index of the network model compared with Cox models on published signature scores, trained in the same cohort:
-Hoshida classes (2009); Chiang proliferation signature (2008); immune and WNT classes (Montironi 2023 Inflamed,
-Sia 2017 immune class, Haber 2023 IFNAP, WNT/β-catenin activation); Gao 2019 proteogenomic prognosis axes (PYCR2,
-ADH1A); and all published scores together (also TP53-mutant proteome, Désert stem-like, Hoshida S1–S3, Chiang
-proliferation and CTNNB1, KRT19, plus tumour mean expression). Adding the network score to all known scores: likelihood-ratio P ≥ 0.11 in every
-cohort.
-**h**, Leave-one-cohort-out stability: the network, causal inference and risk model were rebuilt without each
-discovery cohort. Bars show regulators recovered; median correlation, in the held-out cohort, between each program's
-activity and its best leave-out match (all programs; the quarter with the largest risk weights); and high-confidence
-driver–regulator edges recovered (CTNNB1; all drivers). Text, C-index of models built entirely
-without the test cohort.
+**f**, Drug-constrained network activity (DCNA) and drug sensitivity in HCC cell lines (GDSC; 148 drugs whose Open
+Targets targets map to network regulons, 16 lines, 2,268 line–drug pairs). DCNA = mean trinary MINER activity of the
+regulons that a drug target regulates or belongs to (regulon level), or of the programs holding them (program level);
+lines are predicted responders when DCNA > 0 (inhibitors). y axis, ln IC50 standardized within drug (lower = more
+sensitive). Bars, median and interquartile range. Δ, difference in mean (predicted responders minus non-responders);
+P, one-sided, predicted classes permuted within drug (1,000 permutations); random regulons, each drug's regulon set
+replaced by random regulons of the same size (200 draws).
+**g**, Emulation of published HCC trials (13 drug arms from 9 trials with ORR posted on ClinicalTrials.gov). For each
+arm, 1,000 synthetic cohorts of the arm's size were drawn from the 929 discovery tumours, weighted to the arm's sex,
+age and Asian-ancestry mix; a patient responds if the drug's DCNA (regulon level) exceeds a threshold (combinations:
+either drug). One threshold shared by all drugs was fitted on the other trials and applied to the held-out trial.
+Points, mean predicted ORR (vertical bars, 95% range over the synthetic cohorts) against observed ORR (horizontal bars,
+exact binomial 95% CI). Text: Pearson r with the 95th percentile of a null with drug labels permuted across arms; mean
+absolute error (MAE) compared with predicting each arm by the mean ORR of the other trials.
 
 ---
 
@@ -137,5 +148,10 @@ without the test cohort.
 | 2a | `06_risk/combat/predictor_ridge_programs_TCGA_RFS_h36m/weights.tsv` |
 | 2b, 2c | `06_risk/.../predictions.tsv`, NTP calls, `01_harmonized/samples.tsv`, `03_genomics_clinical/survival_*_h36m_miner.csv` |
 | 2d | `06_risk/combat/predictor_ridge_programs_{TCGA,CLCA}_RFS_h36m/` |
-| 2e–g | `08_validation/<cohort>/{scores,evaluation,head_to_head}.tsv`, `07_post/figures/risk_head_to_head.tsv` |
-| 2h | `08_validation/loco/{loco_summary.tsv,loco_programs.tsv}` |
+| 2e | `08_validation/<cohort>/{scores,evaluation}.tsv` |
+| 2f | `10_response/dcna/{celllines_tests.tsv,celllines_pairs_regulon.tsv,celllines_pairs_program.tsv}` (step 10c) |
+| 2g | `10_response/trials/{emulation_predictions.tsv,emulation_summary.tsv}` (step 10d) |
+
+Moved out of Figure 2 (2026-10-05; candidates for a supplementary figure): HR forest plot (`08_validation/*/evaluation.tsv`),
+C-index vs published signatures (`08_validation/*/head_to_head.tsv`, `07_post/figures/risk_head_to_head.tsv`) and
+leave-one-cohort-out stability (`08_validation/loco/`).

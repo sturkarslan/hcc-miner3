@@ -157,14 +157,15 @@ def f1a_design(ax, D, P):
            ("LICA-FR", "LICA_FR", ["n = 324 · RNA-seq (TPM)", "WES/WGS · CNA · no survival", "alcohol/NASH/viral, France"])]
     for i, (t, c, lines) in enumerate(coh):
         box(0, 26 - i * 12.5, 20.3, 11, t, lines, COH[c])
-    steps = [("Harmonize", ["13,866 genes", "log2 TPM", "ComBat by cohort"]),
-             ("MINER network", ["regulons (186", "technical excluded)", "→ programs", "→ states"]),
-             ("Causal inference", ["113 genomic", "features: driver", "→ regulator", "→ regulon"]),
-             ("Risk model", ["ridge on", "76 programs;", "TCGA ↔ CLCA", "36 months"])]
+    steps = [("Harmonize", ["13,866 genes", "log2 TPM", "ComBat by", "cohort"]),
+             ("MINER", ["regulons", "(186 technical", "excluded)", "→ programs"]),
+             ("Causal", ["113 genomic", "features", "→ regulator", "→ regulon"]),
+             ("Risk", ["ridge, 76", "programs;", "TCGA ↔ CLCA", "36 months"]),
+             ("Drugs", ["targets →", "regulons;", "GDSC lines;", "trials"])]
     for i, (t, lines) in enumerate(steps):
-        x = 22.6 + i * 15.1
-        box(x, 13.5, 14.1, 16, t, lines, Q.INK)
-        arrow(x - 1.0 if i else 20.7, 21.5, x - 0.15, 21.5)
+        x = 22.6 + i * 12.1
+        box(x, 13.5, 11.3, 16, t, lines, Q.INK)
+        arrow(x - 0.8 if i else 20.7, 21.5, x - 0.15, 21.5)
     ax.text(22.6, 11.2, "Annotation: immune classes (Montironi 2023), reference classes (Hoshida, Boyault), hallmarks",
             fontsize=4.9, color=Q.INK2, va="top")
     ax.text(84.5, 39.5, "External validation", fontsize=5.8, fontweight="bold", va="top")
@@ -843,6 +844,72 @@ def f2h_loco(ax, D):
     return S
 
 
+def f2f_celllines(fig, sub, D):
+    """Drug-constrained regulon / program activity (DCNA, step 10c) vs measured drug sensitivity in HCC cell lines
+    (GDSC ln IC50, z within drug), all mapped drugs pooled."""
+    ddir = os.path.join(D["res"], "10_response", "dcna")
+    T = pd.read_csv(os.path.join(ddir, "celllines_tests.tsv"), sep="\t").set_index("level")
+    gs = gridspec.GridSpecFromSubplotSpec(1, 2, subplot_spec=sub, wspace=0.45)
+    rng = np.random.default_rng(0)
+    axes = []
+    for j, (lev, name) in enumerate((("regulon", "regulon level"), ("program", "program level"))):
+        ax = fig.add_subplot(gs[j], sharey=axes[0] if axes else None)
+        axes.append(ax)
+        X = pd.read_csv(os.path.join(ddir, f"celllines_pairs_{lev}.tsv"), sep="\t")
+        dd = [X.loc[X["pred"] == 0, "z_ln_ic50"], X.loc[X["pred"] == 1, "z_ln_ic50"]]
+        for i, (v, col) in enumerate(zip(dd, (PROT, ADV))):
+            ax.scatter(i + rng.uniform(-0.22, 0.22, len(v)), v, s=0.6, color=col, alpha=0.25, lw=0)
+            q1, md, q3 = np.percentile(v, [25, 50, 75])
+            ax.plot([i, i], [q1, q3], color=Q.INK, lw=1.2)
+            ax.plot([i - 0.28, i + 0.28], [md, md], color=Q.INK, lw=1.0)
+        r = T.loc[[k for k in T.index if k.startswith(lev)][0]]
+        pp = r["perm_p_one_sided"]
+        txt = f"Δ = {r['delta']:.2f}; P {'< 0.001' if pp <= 0.001 else f'= {pp:.3f}'}"
+        if lev == "regulon" and pd.notna(r.get("random_regulon_p_one_sided", np.nan)):
+            txt += f"\nrandom regulons P = {r['random_regulon_p_one_sided']:.3f}"
+        ax.text(0.5, 1.0, txt, transform=ax.transAxes, ha="center", va="bottom", fontsize=4.5)
+        ax.set_xticks([0, 1])
+        ax.set_xticklabels(["predicted\nnon-responder", "predicted\nresponder"], fontsize=4.6)
+        ax.set_title(name, fontsize=5.4, pad=14)
+        despine(ax)
+        if j == 0:
+            ax.set_ylabel("ln IC50 (z within drug)")
+        else:
+            plt.setp(ax.get_yticklabels(), visible=False)
+    fig.text(axes[0].get_position().x0, axes[0].get_position().y1 + 0.03,
+             f"HCC cell lines: {int(r['drugs'])} drugs × {X['line'].nunique()} lines (GDSC)", fontsize=6.5, va="bottom")
+    return axes[0], T
+
+
+def f2g_trials(ax, D):
+    """Trial emulation (step 10d): predicted ORR in 1,000 synthetic cohorts per arm (matched on sex, age, ancestry) with a
+    single DCRA threshold fitted on the other trials, vs observed ORR (ClinicalTrials.gov)."""
+    tdir = os.path.join(D["res"], "10_response", "trials")
+    PR = pd.read_csv(os.path.join(tdir, "emulation_predictions.tsv"), sep="\t")
+    S = pd.read_csv(os.path.join(tdir, "emulation_summary.tsv"), sep="\t")
+    g = PR[(PR["pool"] == "all") & PR["mode"].str.startswith("B")]
+    s = S[(S["pool"] == "all") & S["mode"].str.startswith("B")].iloc[0]
+    ici = g["drugs"].str.contains("mab")
+    for k, col, lab in ((False, PROT, "kinase inhibitor"), (True, ADV, "immune checkpoint (± combination)")):
+        h = g[ici == k]
+        ax.errorbar(100 * h["orr"], 100 * h["pred"], yerr=[100 * (h["pred"] - h["lo"]), 100 * (h["hi"] - h["pred"])],
+                    xerr=[100 * (h["orr"] - h["orr_lo"]), 100 * (h["orr_hi"] - h["orr"])], fmt="o", ms=2.5, lw=0.4, color=col,
+                    label=lab, capsize=0)
+    m = 35
+    ax.plot([0, m], [0, m], color=Q.AXIS, lw=0.5, ls="--")
+    ax.set_xlim(0, m)
+    ax.set_ylim(-1, m)
+    ax.set_xlabel("observed ORR (%)")
+    ax.set_ylabel("predicted ORR (%)")
+    ax.legend(loc="upper left", fontsize=4.4, handletextpad=0.2)
+    ax.text(0.98, 0.42, f"{len(g)} arms, {g['trial'].nunique()} trials\nr = {s['pearson']:.2f} (null 95% {s['null_pearson_95']:.2f})\n"
+            f"MAE {100 * s['mae']:.1f} pts (mean-ORR baseline {100 * s['naive_mae']:.1f})", transform=ax.transAxes, ha="right",
+            va="bottom", fontsize=4.4)
+    despine(ax)
+    ax.set_title("Clinical-trial emulation (leave-one-trial-out)")
+    return g
+
+
 def figure2(D, P, outdir, log, m07c):
     fig = plt.figure(figsize=(W, 240 * MM))
     gs = gridspec.GridSpec(4, 1, height_ratios=[50, 62, 42, 62], hspace=0.5, left=0.035, right=0.985, top=0.975,
@@ -861,26 +928,20 @@ def figure2(D, P, outdir, log, m07c):
     axd, axe = f2d_e_km(fig, r3[1], D, P)
     letter(axd, "d", x=-0.3)
     letter(axe, "e", x=-0.1)
-    r4 = gridspec.GridSpecFromSubplotSpec(1, 3, subplot_spec=gs[3], width_ratios=[1.45, 1.12, 0.78], wspace=0.3)
-    axf, fo = f2f_forest(fig, r4[0], D)
-    letter(axf, "f", x=-0.6)
-    r4g = gridspec.GridSpecFromSubplotSpec(1, 2, subplot_spec=r4[1], width_ratios=[0.5, 1], wspace=0.0)
+    r4 = gridspec.GridSpecFromSubplotSpec(1, 3, subplot_spec=gs[3], width_ratios=[0.12, 1.25, 1], wspace=0.35)
+    axf, ct = f2f_celllines(fig, r4[1], D)
+    letter(axf, "f", x=-0.45, y=1.18)
+    r4g = gridspec.GridSpecFromSubplotSpec(1, 2, subplot_spec=r4[2], width_ratios=[0.25, 1], wspace=0.0)
     ax = fig.add_subplot(r4g[1])
-    H = f2g_benchmark(ax, D)
-    letter(ax, "g", x=-0.55)
-    r4h = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=r4[2], height_ratios=[1, 0.9], hspace=0.0)
-    ax = fig.add_subplot(r4h[0])
-    loco = f2h_loco(ax, D)
-    letter(ax, "h", x=-0.08, y=1.02)
+    tr = f2g_trials(ax, D)
+    letter(ax, "g", x=-0.25, y=1.04)
     for ext in ("pdf", "png"):
         fig.savefig(os.path.join(outdir, f"figure2.{ext}"))
     plt.close(fig)
     with pd.ExcelWriter(os.path.join(outdir, "figure2_source_data.xlsx")) as xw:
-        w.to_frame("weight").to_excel(xw, "2a_weights")
-        fo.to_excel(xw, "2f_forest", index=False)
-        H.to_excel(xw, "2g_benchmark", index=False)
-        if loco is not None:
-            loco.to_excel(xw, "2h_loco")
+        w.to_frame("weight").to_excel(xw, sheet_name="2a_weights")
+        ct.to_excel(xw, sheet_name="2f_celllines")
+        tr.to_excel(xw, sheet_name="2g_trial_emulation", index=False)
     log.info("Figure 2 written")
 
 

@@ -59,6 +59,13 @@ Keep entries short: date, what, why.
 
 ## Decisions
 
+- **[2026-10-05] Figures updated (user request).** Figure 2: forest plot (old f), published-signature comparison (old g) and
+  leave-one-cohort-out (old h) removed (user chose "remove f–h" over the literal "e–g", keeping the external KM panel);
+  new 2f = cell-line DCNA vs GDSC IC50, pooled, regulon and program level (step 10c); new 2g = leave-one-trial-out trial
+  emulation, predicted vs observed ORR (step 10d). Panels are redrawn from the saved tables in `09_publication_figures.py`
+  (not pasted from the step-10 PDFs). Figure 1a: fifth workflow step "Drugs" (targets → regulons; GDSC lines; trials).
+  Legends and narration updated in `docs/figure_legends.md`; the removed panels are listed there as supplementary candidates.
+
 - **[2026-10-05] Drug-response figure panels a / b redrawn (user: hard to read).** Response rate against DCRA level instead of
   the DCNA > 0 split. STORM: response rises from Q1 to Q3 and drops at Q4 in both arms (sorafenib 12 / 41 / 69 / 6%;
   placebo 5 / 22 / 61 / 28%; 16–19 per quartile), so the binary split hid a non-monotonic pattern and the arms track each other.
