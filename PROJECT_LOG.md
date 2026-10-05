@@ -59,6 +59,32 @@ Keep entries short: date, what, why.
 
 ## Decisions
 
+- **[2026-10-05] Step 10 run (`scripts/10_response_validation.py`; map v1 frozen at 4d16ab5 before scoring).** Public treated
+  cohorts fetched with `config/treated_cohorts.yaml`: GSE109211 (STORM adjuvant sorafenib vs placebo, FFPE DASL, 140; 42
+  "responders" in both arms) and GSE104580 (TACE, U133 Plus 2 biopsies, 147; 81 responders). Network genes present 87% / 94%.
+  Results in `results/10_response/`.
+  - **GSE109211: no drug-class score is predictive.** The responder label exists in both arms and behaves as an outcome
+    (recurrence-based) label: every score separates responders equally under placebo and sorafenib, and no treatment × score
+    interaction is significant (sorafenib score p 0.39; ICI 0.71; anti-VEGF 0.14; risk 0.42; IFNAP 0.08). The prognostic
+    risk score separates best (AUC 0.08, i.e. 0.92 for low risk), TACE score 0.84, ABRS 0.82, ICI 0.68. The sorafenib score
+    (MAPK + VEGF footprints + immune program) is null (AUC 0.49; sorafenib arm 0.52). IFNAP is strongly inverted (AUC 0.06),
+    unexplained (DASL / FFPE?) — do not interpret.
+  - **GSE104580 (TACE):** TACE score AUC 0.73 (0.65–0.81) but only p 0.075 against random program sets, and the prognostic
+    risk score does as well (AUC 0.23 = 0.77 for low risk). ICI score 0.62, IFNAP 0.62. TACE response follows the general
+    proliferation / prognosis axis, not a TACE-specific network signal.
+  - **L2 subgroups (929 discovery tumours):** ICI score lower in CTNNB1-mutant (−1.05 SD, p < 1e-16; circular, because the ICI
+    score includes WNT programs negatively; the immune-only part, post hoc: −0.50 SD, p 1e-10) and AXIN1-mutant tumours (−0.21,
+    p 0.08; immune-only part −0.35, p 0.002 — supports the new prediction that AXIN1-mutant HCC is ICI-resistant);
+    viral vs non-viral (LICA-FR) +0.16, p 0.16 (expected direction, n.s.); lenvatinib score not higher with CCND1/FGF19
+    amplification (+0.03, p 0.86). AFP-high contrast not run (no AFP field in the discovery data). 4 / 4 directions concordant,
+    2 significant, one of them circular.
+  - **L1 (predicted vs observed trial ORR) not run:** needs an ICI-treated calibration cohort (Zhu 2022 EGA; Haber 2023;
+    Samsung pembrolizumab) — access still to request.
+  - **Reading:** with public data the network recovers the immune-exclusion biology linked to ICI resistance (CTNNB1, AXIN1)
+    but shows no drug-specific predictive signal for sorafenib or TACE; responses in these cohorts track the prognostic
+    axis. Pre-specified success criteria for L3 (design section 7) are not met in the public cohorts; the ICI test is
+    pending treated ICI data.
+
 - **[2026-10-05] Step 10 (SOC drug response) started from Cloud's design; drug -> network map frozen.**
   `config/drug_network_map.yaml` (version 1) and `config/soc_regimens.yaml` written and committed BEFORE any treated
   cohort was downloaded or scored; the freeze commit is the one that adds them (hash recorded in the next entry).

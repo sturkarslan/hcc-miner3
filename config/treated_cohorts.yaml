@@ -1,0 +1,15 @@
+# Treated HCC cohorts for step 10 (patient-level response). Fetched with
+#   bash scripts/slurm/fetch_icca_cohorts.sh --config config/treated_cohorts.yaml
+data_dir: data/treated
+inventory_dir: results/10_response/inventory
+cohorts:
+  GSE109211:
+    source: geo
+    accession: GSE109211
+    role: response_sorafenib
+    expected_n: "140 (STORM adjuvant sorafenib vs placebo; Pinyol 2019); 67 sorafenib: 21 responders / 46 non-responders"
+  GSE104580:
+    source: geo
+    accession: GSE104580
+    role: response_tace
+    expected_n: "147 (TACE; 81 responders / 66 non-responders, mRECIST)"
