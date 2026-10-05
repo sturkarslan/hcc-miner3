@@ -59,6 +59,29 @@ Keep entries short: date, what, why.
 
 ## Decisions
 
+- **[2026-10-05] Step 10d: clinical-trial emulation (`scripts/10d_trial_emulation.py`; user request).** Trials in
+  `config/clinical_trials.yaml` (16 HCC trials); per-arm ORR, denominator, age, % female, % Asian taken from ClinicalTrials.gov
+  posted results (`scripts/tools/fetch_trials.py`, API v2; raw JSON in `data/trials/`, eligibility text in
+  `results/10_response/trials/eligibility/`). Primary ORR per arm = RECIST 1.1 independent review, global population when posted.
+  13 drug arms usable (CheckMate 9DW has no posted results; COSMIC-312, SHARP, Asia-Pacific post no ORR; ramucirumab and
+  apatinib map to no regulon; placebo arms excluded). Caveats: REFLECT's posted ORR is investigator mRECIST (24.1%); CARES-310
+  posts no age / race; Asia-Pacific's posted % female (85%) is implausible and was not used.
+  - Method: 1,000 synthetic cohorts per arm, arm-sized, drawn from the 929 discovery tumours with entropy-balancing weights so
+    the weighted % female, % Asian and mean age equal the arm's (effective n 380–900); option: advanced-stage pool only
+    (TCGA III–IV, BCLC B–C; 406 tumours). Patient responds if DCRA > tau (combinations: any drug, independent action).
+  - **Per-arm threshold (the requested calibration; circular): taus 0.50–0.96, r 0.94.** The tau needed differs by drug class:
+    sorafenib 0.78–0.82 in all four of its trials (stable), anti-PD-1 0.88–0.96, lenvatinib 0.50.
+  - **Real test, leave-one-trial-out global threshold:** r 0.54 (permuted-drug null 95% 0.34), MAE 7.4 points vs 6.8 for
+    predicting every arm with the mean ORR of the other trials; coverage 31%. The network ranks drug classes in the right order
+    (anti-PD-1 / combination arms predicted ~27%, TKI arms 3–8%, observed 13–26% vs 4–9%) but cannot separate drugs that share
+    a target (all anti-PD-1 drugs get the same 25 regulons and the same prediction, while observed ORR ranges 13–25%), and the
+    REFLECT arms fail (predicted ~0%).
+  - **Same-drug threshold transfer (6 arms, sorafenib and pembrolizumab):** MAE 3.4 points vs 2.9 for the mean ORR of the same
+    drug in the other trials; coverage 50%. Matching on sex, age and ancestry does not explain trial-to-trial ORR differences.
+  - Reading: after calibration the network reproduces the class-level ordering of trial response rates, but it does not
+    beat simple baselines at predicting an individual trial's ORR. Trials differ in what the discovery data cannot match
+    (stage, etiology, prior therapy, AFP, response criteria).
+
 - **[2026-10-05] Step 10b: drug-constrained network activity (DCNA), as in the GBM work (`scripts/10b_dcna.py`, miner3 env).**
   Trinary regulon activity (MINER generateRegulonActivity; discovery = MINER's own over − under membership); drug → regulons =
   regulons whose regulator is a target or that contain a target (Open Targets, `scripts/tools/fetch_drug_targets.py` →

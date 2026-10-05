@@ -37,15 +37,26 @@ def gql(q, v):
 
 
 def main():
-    names = sys.argv[1:] or DEFAULT
+    if sys.argv[1:2] == ["--file"]:
+        names = [l.strip() for l in open(sys.argv[2]) if l.strip()]
+    else:
+        names = sys.argv[1:] or DEFAULT
     rows = []
     for n in names:
-        hits = [h for h in gql(Q_SEARCH, {"q": n})["search"]["hits"] if h["entity"] == "drug"]
+        try:
+            hits = [h for h in gql(Q_SEARCH, {"q": n})["search"]["hits"] if h["entity"] == "drug"]
+        except Exception as e:  # noqa: BLE001
+            print(f"{n}: query failed ({e})", flush=True)
+            continue
         if not hits:
             print(f"{n}: not found")
             continue
         h = next((h for h in hits if h["name"].lower() == n.lower()), hits[0])
-        d = gql(Q_DRUG, {"id": h["id"]})["drug"]
+        try:
+            d = gql(Q_DRUG, {"id": h["id"]})["drug"]
+        except Exception as e:  # noqa: BLE001
+            print(f"{n}: drug query failed ({e})", flush=True)
+            continue
         if not d or not d.get("mechanismsOfAction"):
             print(f"{n}: no mechanism of action")
             continue
@@ -53,7 +64,7 @@ def main():
             for t in m["targets"] or []:
                 rows.append({"drug": n.lower(), "chembl_id": d["id"], "ot_name": d["name"], "mechanism": m["mechanismOfAction"],
                              "action_type": m["actionType"], "target_ensembl": t["id"], "target_symbol": t["approvedSymbol"]})
-        print(f"{n}: {d['name']} ({d['id']}), {sum(1 for r in rows if r['drug'] == n.lower())} targets")
+        print(f"{n}: {d['name']} ({d['id']}), {sum(1 for r in rows if r['drug'] == n.lower())} targets", flush=True)
     out = os.path.join(ROOT, "data", "reference", "ot_drug_targets.tsv")
     old = pd.read_csv(out, sep="\t") if os.path.exists(out) else pd.DataFrame()
     new = pd.DataFrame(rows)

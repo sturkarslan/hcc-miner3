@@ -1,0 +1,24 @@
+# Phase 3 (and key phase 2) HCC trials for the trial-emulation step (10d). Per-arm ORR and baseline characteristics are
+# read from ClinicalTrials.gov posted results (scripts/tools/fetch_trials.py); arm -> drug mapping in `arms` is matched to
+# the posted group titles (case-insensitive regex). Drugs must exist in data/reference/ot_drug_targets.tsv.
+trials:
+  - {nct: NCT03434379, name: IMbrave150, line: 1L, arms: {"atezolizumab": [atezolizumab, bevacizumab], "sorafenib": [sorafenib]}}
+  - {nct: NCT01761266, name: REFLECT, line: 1L, arms: {"lenvatinib": [lenvatinib], "sorafenib": [sorafenib]}}
+  - {nct: NCT03298451, name: HIMALAYA, line: 1L, arms: {"tremelimumab|stride": [durvalumab, tremelimumab], "^durvalumab": [durvalumab], "sorafenib": [sorafenib]}}
+  - {nct: NCT04039607, name: CheckMate 9DW, line: 1L, arms: {"nivolumab": [nivolumab, ipilimumab], "lenvatinib|sorafenib": [lenvatinib, sorafenib]}}
+  - {nct: NCT03764293, name: CARES-310, line: 1L, arms: {"camrelizumab|shr-1210": [camrelizumab, apatinib], "sorafenib": [sorafenib]}}
+  - {nct: NCT03412773, name: RATIONALE-301, line: 1L, arms: {"tislelizumab|bgb-a317": [tislelizumab], "sorafenib": [sorafenib]}}
+  - {nct: NCT03713593, name: LEAP-002, line: 1L, arms: {"pembrolizumab": [lenvatinib, pembrolizumab], "placebo|lenvatinib": [lenvatinib]}}
+  - {nct: NCT03755791, name: COSMIC-312, line: 1L, arms: {"cabozantinib.*atezolizumab|atezolizumab.*cabozantinib": [cabozantinib, atezolizumab], "^cabozantinib": [cabozantinib], "sorafenib": [sorafenib]}}
+  - {nct: NCT02576509, name: CheckMate 459, line: 1L, arms: {"nivolumab": [nivolumab], "sorafenib": [sorafenib]}}
+  - {nct: NCT00105443, name: SHARP, line: 1L, arms: {"sorafenib|nexavar|bay": [sorafenib]}}
+  - {nct: NCT00492752, name: Asia-Pacific sorafenib, line: 1L, arms: {"sorafenib|nexavar|bay": [sorafenib]}}
+  - {nct: NCT01774344, name: RESORCE, line: 2L, arms: {"regorafenib|stivarga|bay": [regorafenib]}}
+  - {nct: NCT01908426, name: CELESTIAL, line: 2L, arms: {"cabozantinib|xl184": [cabozantinib]}}
+  - {nct: NCT02435433, name: REACH-2, line: 2L, arms: {"ramucirumab|ly3009806": [ramucirumab]}}
+  - {nct: NCT02702401, name: KEYNOTE-240, line: 2L, arms: {"pembrolizumab|mk-3475": [pembrolizumab]}}
+  - {nct: NCT03062358, name: KEYNOTE-394, line: 2L, arms: {"pembrolizumab|mk-3475": [pembrolizumab]}}
+
+emulation:
+  n_cohorts: 1000
+  seed: 7
