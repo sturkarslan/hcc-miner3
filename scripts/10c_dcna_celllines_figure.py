@@ -175,32 +175,55 @@ def main():
     RED, BLUE = "#e34948", "#2a78d6"
     fig = plt.figure(figsize=(7.2, 6.6))
     gs = fig.add_gridspec(2, 6, height_ratios=[1, 1.1], hspace=0.65, wspace=1.1)
-    tt = pd.read_csv(os.path.join(outdir, "dcna_tests.tsv"), sep="\t")
+    from statsmodels.stats.proportion import proportion_confint
+
+    def rate_line(ax, score, y, groups, col, lab, dx=0.0):
+        """Observed response rate (95% Wilson CI) per DCNA group; groups = Series of ordered group labels."""
+        xs, rs, lo, hi, ns = [], [], [], [], []
+        for k, g in enumerate(groups.cat.categories):
+            m = groups == g
+            n, e = int(m.sum()), int(y[m].sum())
+            if n == 0:
+                continue
+            l_, h_ = proportion_confint(e, n, method="wilson")
+            xs.append(k + dx); rs.append(100 * e / n); lo.append(100 * (e / n - l_)); hi.append(100 * (h_ - e / n)); ns.append(n)
+        ax.errorbar(xs, rs, yerr=[lo, hi], color=col, marker="o", ms=3, lw=1, capsize=1.5, label=lab)
+        for x_, r_, n_ in zip(xs, rs, ns):
+            ax.text(x_, -6, f"{n_}", ha="center", va="top", fontsize=4.2, color=col)
+        ax.text(-0.6, -6, "n", ha="right", va="top", fontsize=4.2, color="k")
+
+    # a: STORM, sorafenib DCRA quartiles (within arm), observed response rate per quartile, sorafenib vs placebo arm
     ax = fig.add_subplot(gs[0, 0:2])
-    t = tt[(tt["cohort"] == "GSE109211") & (tt["level"] == "regulon (DCRA)") & tt["arm"].isin(["Sor", "Plac"])].set_index("arm")
-    xs = np.arange(2)
-    for j, (k, col, lab) in enumerate((("response_rate_pred_nonresp", BLUE, "predicted non-responder"), ("response_rate_pred_resp", RED, "predicted responder"))):
-        ax.bar(xs + (j - 0.5) * 0.36, 100 * t.loc[["Sor", "Plac"], k], 0.34, color=col, label=lab)
-    for i, a_ in enumerate(["Sor", "Plac"]):
-        ax.text(i, 100 * t.loc[a_, ["response_rate_pred_resp", "response_rate_pred_nonresp"]].max() + 3, f"OR {t.loc[a_, 'fisher_or']:.1f}\nP {t.loc[a_, 'fisher_p']:.2f}",
-                ha="center", fontsize=5)
-    ax.set_xticks(xs)
-    ax.set_xticklabels(["sorafenib arm", "placebo arm"])
+    smp = pd.read_csv(p("data/treated/GSE109211/samples_geo.tsv"), sep="\t", index_col=0)
+    sc = pd.read_csv(os.path.join(outdir, "dcra_GSE109211.tsv"), sep="\t", index_col=0).loc["sorafenib"]
+    y = (smp.loc[sc.index, "ch:outcome"] == "responder").astype(int)
+    labels = ["Q1\n(lowest)", "Q2", "Q3", "Q4\n(highest)"]
+    for arm, col, lab, dx in (("Sor", RED, "sorafenib arm", -0.08), ("Plac", "#6b6b6b", "placebo arm", 0.08)):
+        idx = smp.index[(smp["ch:treatment"] == arm)].intersection(sc.index)
+        q = pd.qcut(sc[idx].rank(method="first"), 4, labels=labels)
+        rate_line(ax, sc[idx], y[idx], q, col, lab, dx)
+    ax.set_xticks(range(4))
+    ax.set_xticklabels(labels, fontsize=5)
+    ax.set_xlabel("sorafenib DCRA quartile (within arm)", labelpad=8)
     ax.set_ylabel("observed responders (%)")
-    ax.set_ylim(0, 60)
+    ax.set_ylim(-12, 80)
+    ax.set_yticks([0, 20, 40, 60, 80])
     ax.legend(fontsize=4.8, frameon=False, loc="upper left")
-    ax.set_title("a  STORM (GSE109211): sorafenib DCRA", loc="left")
+    ax.set_title("a  STORM (GSE109211)\n    sorafenib vs placebo", loc="left")
+    # b: TACE, doxorubicin DCRA (3 TOP2A regulons: discrete values), observed response rate per level
     ax = fig.add_subplot(gs[0, 2:4])
-    t = tt[(tt["cohort"] == "GSE104580")].set_index("level")
-    for j, (k, col) in enumerate((("response_rate_pred_nonresp", BLUE), ("response_rate_pred_resp", RED))):
-        ax.bar(xs + (j - 0.5) * 0.36, 100 * t.loc[["regulon (DCRA)", "program (DCPA)"], k], 0.34, color=col)
-    for i, l_ in enumerate(["regulon (DCRA)", "program (DCPA)"]):
-        ax.text(i, 100 * t.loc[l_, ["response_rate_pred_resp", "response_rate_pred_nonresp"]].max() + 3, f"OR {t.loc[l_, 'fisher_or']:.2f}\nP {t.loc[l_, 'fisher_p']:.0e}",
-                ha="center", fontsize=5)
-    ax.set_xticks(xs)
-    ax.set_xticklabels(["regulon level", "program level"])
-    ax.set_ylim(0, 95)
-    ax.set_title("b  TACE (GSE104580): doxorubicin DCNA", loc="left")
+    smp = pd.read_csv(p("data/treated/GSE104580/samples_geo.tsv"), sep="\t", index_col=0)
+    sc = pd.read_csv(os.path.join(outdir, "dcra_GSE104580.tsv"), sep="\t", index_col=0).loc["doxorubicin"]
+    y = (smp.loc[sc.index, "ch:subject subgroup"] == "TACE responders").astype(int)
+    cats = ["−1", "−0.67 to −0.33", "0", "0.33 to 0.67", "+1"]
+    g = pd.cut(sc, [-1.01, -0.99, -0.01, 0.01, 0.99, 1.01], labels=cats)
+    rate_line(ax, sc, y, g, "#2a78d6", "TACE")
+    ax.set_xticks(range(len(cats)))
+    ax.set_xticklabels(cats, fontsize=5)
+    ax.set_xlabel("doxorubicin (TOP2A) DCRA", labelpad=8)
+    ax.set_ylim(-12, 100)
+    ax.set_yticks([0, 20, 40, 60, 80, 100])
+    ax.set_title("b  TACE (GSE104580)", loc="left")
     for j, level in enumerate(("regulon (DCRA)", "program (DCPA)")):
         ax = fig.add_subplot(gs[0, 4 + j])
         X = pooled[level]

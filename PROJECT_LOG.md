@@ -59,6 +59,11 @@ Keep entries short: date, what, why.
 
 ## Decisions
 
+- **[2026-10-05] Drug-response figure panels a / b redrawn (user: hard to read).** Response rate against DCRA level instead of
+  the DCNA > 0 split. STORM: response rises from Q1 to Q3 and drops at Q4 in both arms (sorafenib 12 / 41 / 69 / 6%;
+  placebo 5 / 22 / 61 / 28%; 16–19 per quartile), so the binary split hid a non-monotonic pattern and the arms track each other.
+  TACE: response falls steadily with doxorubicin (TOP2A) DCRA, from 86% at −1 to 31–37% at +0.33 to +1.
+
 - **[2026-10-05] Step 10c: DCNA in HCC cell lines vs GDSC IC50 (`scripts/10c_dcna_celllines_figure.py`).** 27 HCC lines with
   RNA-seq (Cell Model Passports rnaseq_tpm 2022-06), 16 with GDSC IC50 (GDSC2 preferred, else GDSC1); drug targets for 515 GDSC
   compounds from Open Targets (183 with targets, 161 mapping to >= 1 regulon; 148 drugs tested in >= 8 lines). Trinary
@@ -71,7 +76,8 @@ Keep entries short: date, what, why.
     cabozantinib 0.05, sorafenib +0.42 and axitinib +0.64 (wrong direction).
   - Contrast with patients: the doxorubicin / TOP2A DCNA that predicts cell-line sensitivity predicts TACE *non*-response
     (step 10b) — proliferative tumours respond poorly to TACE clinically although proliferative lines are anthracycline-sensitive.
-  - Figure `results/10_response/figures/drug_response.{png,pdf}`: STORM and TACE response by predicted class, pooled and SOC
+  - Figure `results/10_response/figures/drug_response.{png,pdf}`: STORM and TACE observed response rate (Wilson 95% CI) across DCRA
+    levels (STORM: quartiles within arm, sorafenib vs placebo; TACE: the 5 levels of the 3-regulon doxorubicin DCRA), pooled and SOC
     cell-line IC50, DCRA heatmap of SOC drugs across the discovery tumours.
 
 - **[2026-10-05] Step 10d: clinical-trial emulation (`scripts/10d_trial_emulation.py`; user request).** Trials in
