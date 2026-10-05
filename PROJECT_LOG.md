@@ -64,7 +64,7 @@ Keep entries short: date, what, why.
   cohort was downloaded or scored; the freeze commit is the one that adds them (hash recorded in the next entry).
   Components use only sets available on the server: Zhu 2022 Teff / Treg / myeloid / angiogenesis sets (paper not open
   access) and FGF19-FGFR4 / MET target sets are gaps; PROGENy pathway footprints (top 100 genes per pathway, OmniPath)
-  added for MAPK / VEGF / hypoxia (`scripts/tools/add_progeny_sets.py`).
+  added for MAPK / VEGF / hypoxia (`scripts/tools/add_progeny_sets.py`). **Freeze commit: 4d16ab5.**
 
 - **[2026-10-01] Figure colour rule (user request): red–blue is reserved for risk and regulon dysregulation.** All other heatmaps in Figures 1–2 use viridis (`FRAC_CMAP` in `scripts/09_publication_figures.py`): Fig 1c class/mutation tracks, Fig 2c state composition rows. Fig 1d (signed correlation) uses purple–green (`COR_CMAP` = PRGn) so that zero is white and negatives are distinct. Each has its own colour key. Labels P7 / P17 shortened to fit ("CTNNB1 proteome (HNF1A)", "Hepatocyte-like (ADH1A axis)").
 - **[2026-10-01] Reference-panel re-run done on the server (07a → 07b → 07c → 07d + 08 → 09; SLURM 15021–15026); Figures 1–2 rebuilt.**
